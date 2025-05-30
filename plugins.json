@@ -1,0 +1,21 @@
+[
+    {
+        "fileHash": "sha256-da1ad20876e23659969164f4e2e74e5e7fd9a1fa217f67899f1674649fbf7ebc",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Pablopinheiroo/ninjatv-lab",
+        "fileSize": 49032,
+        "status": 1,
+        "language": "pt-BR",
+        "authors": [
+            "Pablopinheiroo"
+        ],
+        "tvTypes": [
+            "Movie"
+        ],
+        "version": 2,
+        "internalName": "SuperflixFilmesTeste",
+        "description": "v1.1 \u2014 Cat\u00e1logo JSON com tratamento de limite de requisi\u00e7\u00f5es da API.",
+        "url": "https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/builds/SuperflixFilmesTeste.cs3",
+        "name": "SuperflixFilmesTeste"
+    }
+]
