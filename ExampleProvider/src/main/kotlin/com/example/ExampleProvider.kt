@@ -29,7 +29,7 @@ private data class EducationalMovie(
  * Educational provider example.
  *
  * Demonstrates homepage, search, details and playback using an openly licensed
- * film hosted by its original distributor. No third-party streaming sites are
+ * film made available as public test media for the ExoPlayer project. No third-party streaming sites are
  * scraped or queried.
  */
 class ExampleProvider : MainAPI() {
@@ -52,7 +52,7 @@ class ExampleProvider : MainAPI() {
                 "Este item é usado como demonstração técnica do catálogo, da busca, " +
                 "da página de detalhes e do player.",
             durationMinutes = 10,
-            videoUrl = "https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4"
+            videoUrl = "https://storage.googleapis.com/exoplayer-test-media-0/BigBuckBunny_320x180.mp4"
         )
     )
 
@@ -125,7 +125,7 @@ class ExampleProvider : MainAPI() {
         val movie = educationalMovies.firstOrNull { it.id == data } ?: return false
 
         val link = newExtractorLink(
-            source = "Blender Foundation",
+            source = "Blender Foundation (ExoPlayer test media)",
             name = "${movie.title} - MP4",
             url = movie.videoUrl,
             type = ExtractorLinkType.VIDEO

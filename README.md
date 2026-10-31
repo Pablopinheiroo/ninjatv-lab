@@ -9,7 +9,7 @@ O objetivo deste repositório é estudar a estrutura de plugins baseada no ecoss
 - Este projeto é destinado ao aprendizado de programação, experimentação e testes de compatibilidade.
 - O repositório não hospeda nem redistribui arquivos audiovisuais.
 - O plugin de demonstração apresenta um catálogo mínimo com **Big Buck Bunny**, curta-metragem da Blender Foundation distribuído sob a licença Creative Commons Attribution 3.0 (CC BY 3.0).
-- A reprodução de demonstração aponta diretamente para o arquivo disponibilizado no servidor oficial de downloads da Blender Foundation. O arquivo original e seus créditos finais são mantidos.
+- A reprodução de demonstração utiliza um arquivo MP4 público de teste do projeto ExoPlayer, hospedado no Google Cloud Storage. O arquivo é identificado como Big Buck Bunny; a hospedagem de teste não altera a licença nem a autoria do filme.
 - Qualquer integração futura deverá utilizar conteúdo próprio, de domínio público, licenciado ou serviços cujos responsáveis tenham autorizado expressamente o acesso e a integração.
 - Não são objetivo deste projeto contornar controles de acesso, restrições técnicas ou direitos autorais, nem extrair ou redistribuir transmissões de terceiros sem autorização.
 
@@ -27,9 +27,9 @@ O `ExampleProvider` demonstra:
 1. Exibição de uma página inicial.
 2. Busca pelo título de demonstração.
 3. Abertura de uma página de detalhes.
-4. Entrega ao player de uma fonte MP4 licenciada para compartilhamento.
+4. Entrega ao player de uma fonte MP4 de teste, sem uma página intermediária de streaming.
 
-**Big Buck Bunny** é distribuído sob CC BY 3.0. Atribuição indicada pelo projeto original: **Blender Foundation | www.blender.org**. Consulte a [página oficial da licença](https://peach.blender.org/about/) antes de reutilizar ou redistribuir o filme. A reprodução inclui a versão completa, com os créditos finais originais.
+**Big Buck Bunny** é distribuído sob CC BY 3.0. Atribuição indicada pelo projeto original: **Blender Foundation | www.blender.org**. Consulte a [página oficial da licença](https://peach.blender.org/about/) antes de reutilizar ou redistribuir o filme. O exemplo usa o arquivo de teste público `https://storage.googleapis.com/exoplayer-test-media-0/BigBuckBunny_320x180.mp4`; mantenha a atribuição e os créditos finais originais.
 
 ## Compilação
 
