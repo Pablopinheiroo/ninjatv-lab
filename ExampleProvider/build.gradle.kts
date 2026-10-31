@@ -4,7 +4,7 @@ dependencies {
 }
 
 // Use an integer for version numbers
-version = 1
+version = 2
 
 cloudstream {
     description = "Exemplo educacional com catálogo, busca, detalhes e reprodução de Big Buck Bunny, obra CC BY 3.0."
