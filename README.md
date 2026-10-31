@@ -13,6 +13,16 @@ O objetivo deste repositório é estudar a estrutura de plugins baseada no ecoss
 - Qualquer integração futura deverá utilizar conteúdo próprio, de domínio público, licenciado ou serviços cujos responsáveis tenham autorizado expressamente o acesso e a integração.
 - Não são objetivo deste projeto contornar controles de acesso, restrições técnicas ou direitos autorais, nem extrair ou redistribuir transmissões de terceiros sem autorização.
 
+## Aviso sobre direitos autorais (DMCA)
+
+Este projeto tem caráter exclusivamente educacional e demonstra conceitos de desenvolvimento de extensões que consultam serviços externos. O NinjaTV Lab não hospeda, armazena ou mantém cópias de filmes, séries, animes ou outros arquivos audiovisuais em sua infraestrutura.
+
+Quando uma integração externa autorizada for disponibilizada, as páginas, informações e eventuais mídias continuarão sob responsabilidade e hospedagem dos respectivos serviços de origem. O projeto não declara ser proprietário desses materiais, não concede licença sobre conteúdo de terceiros e não afirma que a disponibilidade pública de um endereço representa autorização para sua utilização.
+
+Se um titular de direitos autorais ou representante identificar neste repositório algum material ou referência que considere irregular, poderá entrar em contato por meio dos canais do projeto no GitHub, indicando a obra, a URL específica e a justificativa do pedido. A solicitação será analisada e, quando pertinente e dentro do controle do projeto, a referência ou integração correspondente poderá ser removida ou desativada.
+
+A remoção de uma referência deste repositório não remove o material do serviço externo que o hospeda. Para solicitar a remoção do conteúdo original, o titular também deverá procurar o respectivo site ou provedor de hospedagem. Este aviso descreve a finalidade e o procedimento do projeto; não substitui autorização dos titulares, não garante imunidade jurídica e não determina a legalidade de conteúdos de terceiros.
+
 Este é um projeto independente, sem afiliação, patrocínio ou endosso oficial do NinjaTV ou dos mantenedores do Cloudstream.
 
 ## Estrutura do repositório
