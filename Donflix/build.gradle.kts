@@ -1,9 +1,9 @@
-version = 1
+version = 2
 
 cloudstream {
-    description = "Catálogo experimental do Donflix: filmes, séries, animes, busca e detalhes."
+    description = "Catálogo do Donflix: filmes, séries, animes, categorias, busca e detalhes."
     authors = listOf("Pablopinheiroo")
-    status = 3
+    status = 1
     tvTypes = listOf("Movie", "TvSeries", "Anime")
     language = "pt-BR"
 }

@@ -7,11 +7,12 @@ import org.jsoup.nodes.Element
 import java.net.URLEncoder
 
 /**
- * Experimental catalog-only integration.
+ * Donflix public catalog provider.
  *
- * Reads public Donflix catalog/detail pages. Playback intentionally remains
- * with the official Donflix page/player; this provider does not request,
- * extract, store or renew private player tickets or source URLs.
+ * Reads public catalog and detail pages using ordinary HTTP requests.
+ * The native player integration is not implemented yet: loadLinks returns
+ * false until a source can be supplied through an authorized native playback
+ * interface. This module does not use a WebView.
  */
 class DonflixProvider : MainAPI() {
     override var mainUrl = BASE_URL
@@ -19,7 +20,7 @@ class DonflixProvider : MainAPI() {
     override var lang = "pt-BR"
     override val hasMainPage = true
     override val hasDownloadSupport = false
-    override val usesWebView = true
+    override val usesWebView = false
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries, TvType.Anime)
 
     companion object {
@@ -102,8 +103,7 @@ class DonflixProvider : MainAPI() {
     private fun yearFrom(vararg values: String?): Int? {
         values.forEach { value ->
             if (!value.isNullOrBlank()) {
-                val match = yearRegex.find(value)
-                val year = match?.groupValues?.getOrNull(1)?.toIntOrNull()
+                val year = yearRegex.find(value)?.groupValues?.getOrNull(1)?.toIntOrNull()
                 if (year != null) return year
             }
         }
@@ -112,14 +112,13 @@ class DonflixProvider : MainAPI() {
 
     private fun titleFromCard(anchor: Element): String? {
         val image = anchor.selectFirst("img")
-        val candidates = listOf(
+        return listOf(
             image?.attr("alt"),
             anchor.attr("title"),
             anchor.attr("aria-label"),
             anchor.selectFirst("h2, h3, h4, [class*=title], [class*=name]")?.text(),
             anchor.text()
-        )
-        return candidates.firstOrNull { !it.isNullOrBlank() }
+        ).firstOrNull { !it.isNullOrBlank() }
             ?.replace(Regex("\\s+"), " ")
             ?.trim()
             ?.takeIf { it.isNotBlank() }
@@ -128,9 +127,8 @@ class DonflixProvider : MainAPI() {
     private fun toSearchResponse(anchor: Element): SearchResponse? {
         val href = absoluteUrl(anchor.attr("href")) ?: return null
         val type = classify(href) ?: return null
-        if (!contentPath.containsMatchIn(runCatching { "/" + href.substringAfter("://").substringAfter("/").substringBefore("?") }.getOrDefault(""))) {
-            return null
-        }
+        val path = "/" + href.substringAfter("://").substringAfter("/").substringBefore("?")
+        if (!contentPath.matches(path)) return null
 
         val title = titleFromCard(anchor) ?: return null
         val poster = elementImage(anchor.selectFirst("img"))
@@ -182,8 +180,7 @@ class DonflixProvider : MainAPI() {
             "$base${separator}page=$page"
         }
         val document = app.get(pageUrl, referer = BASE_URL).document
-        val results = extractCards(document)
-        return newHomePageResponse(request.name, results, hasNextPage(document, page))
+        return newHomePageResponse(request.name, extractCards(document), hasNextPage(document, page))
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -203,8 +200,7 @@ class DonflixProvider : MainAPI() {
 
     private fun pagePoster(document: Document): String? {
         val meta = document.selectFirst("meta[property=og:image]")?.attr("content")
-        return absoluteUrl(meta)
-            ?: elementImage(document.selectFirst("main img, article img, img[alt]"))
+        return absoluteUrl(meta) ?: elementImage(document.selectFirst("main img, article img, img[alt]"))
     }
 
     private fun pagePlot(document: Document): String? {
@@ -219,7 +215,7 @@ class DonflixProvider : MainAPI() {
                 val episodeUrl = absoluteUrl(anchor.attr("href")) ?: return@mapNotNull null
                 val season = seasonRegex.find(episodeUrl)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 1
                 val episodeNumber = episodeRegex.find(episodeUrl)?.groupValues?.getOrNull(1)?.toIntOrNull()
-                    ?: Regex("""(?i)(?:epis[oó]dio|ep\.?)\s*(\d+)""")
+                    ?: Regex("""(?i)(?:epis[oó]dio|ep\\.?)\\s*(\\d+)""")
                         .find(anchor.text())?.groupValues?.getOrNull(1)?.toIntOrNull()
                 val label = sequenceOf(
                     anchor.attr("title"),
@@ -283,9 +279,8 @@ class DonflixProvider : MainAPI() {
     }
 
     /**
-     * Direct media extraction and player-ticket handling are deliberately not
-     * implemented. This provider currently supplies catalog/detail navigation only;
-     * it does not claim to launch playback inside the app.
+     * Native video playback is not yet connected. The catalog and metadata
+     * methods above do not create or return video sources.
      */
     @Suppress("UNUSED_PARAMETER")
     override suspend fun loadLinks(
@@ -293,7 +288,5 @@ class DonflixProvider : MainAPI() {
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (com.lagradost.cloudstream3.utils.ExtractorLink) -> Unit
-    ): Boolean {
-        return false
-    }
+    ): Boolean = false
 }
