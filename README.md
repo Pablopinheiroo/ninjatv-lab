@@ -7,8 +7,9 @@ O objetivo deste repositório é estudar a estrutura de plugins baseada no ecoss
 ## Finalidade e limites
 
 - Este projeto é destinado ao aprendizado de programação, experimentação e testes de compatibilidade.
-- O repositório contém exemplos de código e não hospeda nem distribui filmes, séries, vídeos ou outros conteúdos audiovisuais.
-- O plugin de demonstração atual não é uma integração funcional com um serviço de streaming: ele usa `example.com` como endereço ilustrativo e sua função de busca retorna uma lista vazia.
+- O repositório não hospeda nem redistribui arquivos audiovisuais.
+- O plugin de demonstração apresenta um catálogo mínimo com **Big Buck Bunny**, curta-metragem da Blender Foundation distribuído sob a licença Creative Commons Attribution 3.0 (CC BY 3.0).
+- A reprodução de demonstração aponta diretamente para o arquivo disponibilizado no servidor oficial de downloads da Blender Foundation. O arquivo original e seus créditos finais são mantidos.
 - Qualquer integração futura deverá utilizar conteúdo próprio, de domínio público, licenciado ou serviços cujos responsáveis tenham autorizado expressamente o acesso e a integração.
 - Não são objetivo deste projeto contornar controles de acesso, restrições técnicas ou direitos autorais, nem extrair ou redistribuir transmissões de terceiros sem autorização.
 
@@ -18,6 +19,17 @@ Este é um projeto independente, sem afiliação, patrocínio ou endosso oficial
 
 - `master`: código-fonte, configurações e manifesto do repositório.
 - `builds`: arquivos de plugins compilados (`.cs3`), catálogo `plugins.json` e manifesto `repo.json`.
+
+## O que o plugin de demonstração faz
+
+O `ExampleProvider` demonstra:
+
+1. Exibição de uma página inicial.
+2. Busca pelo título de demonstração.
+3. Abertura de uma página de detalhes.
+4. Entrega ao player de uma fonte MP4 licenciada para compartilhamento.
+
+**Big Buck Bunny** é distribuído sob CC BY 3.0. Atribuição indicada pelo projeto original: **Blender Foundation | www.blender.org**. Consulte a [página oficial da licença](https://peach.blender.org/about/) antes de reutilizar ou redistribuir o filme. A reprodução inclui a versão completa, com os créditos finais originais.
 
 ## Compilação
 
@@ -53,4 +65,3 @@ Este repositório é uma cópia independente para estudo. Alterações aqui real
 ## Licença do template original
 
 O README do template de origem declara que o conteúdo do template é disponibilizado em domínio público, sem condições de uso. Consulte também o repositório original e seus avisos para verificar a licença e a atribuição aplicáveis a cada componente.
-

@@ -7,8 +7,7 @@ dependencies {
 version = 1
 
 cloudstream {
-    // Educational example: this module demonstrates plugin structure and metadata.
-    description = "Exemplo educacional para estudo da estrutura de plugins e da API Cloudstream. Não fornece fontes de reprodução."
+    description = "Exemplo educacional com catálogo, busca, detalhes e reprodução de Big Buck Bunny, obra CC BY 3.0."
     authors = listOf("Cloudburst", "Luna712")
 
     /**
@@ -18,14 +17,14 @@ cloudstream {
     * 2: Slow
     * 3: Beta-only
     **/
-    status = 1 // Will be 3 if unspecified
+    status = 1
 
     tvTypes = listOf("Movie")
 
     requiresResources = true
-    language = "en"
+    language = "pt-BR"
 
-    // Example icon retained from the original template.
+    // Original example icon retained from the template.
     iconUrl = "https://upload.wikimedia.org/wikipedia/commons/2/2f/Korduene_Logo.png"
 }
 
