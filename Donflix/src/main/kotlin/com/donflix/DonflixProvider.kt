@@ -219,7 +219,7 @@ class DonflixProvider : MainAPI() {
                 val episodeUrl = absoluteUrl(anchor.attr("href")) ?: return@mapNotNull null
                 val season = seasonRegex.find(episodeUrl)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 1
                 val episodeNumber = episodeRegex.find(episodeUrl)?.groupValues?.getOrNull(1)?.toIntOrNull()
-                    ?: Regex("""(?i)(?:epis[oó]dio|ep\\.?)\\s*(\\d+)""")
+                    ?: Regex("""(?i)(?:epis[oó]dio|ep\.?)\s*(\d+)""")
                         .find(anchor.text())?.groupValues?.getOrNull(1)?.toIntOrNull()
                 val label = sequenceOf(
                     anchor.attr("title"),
