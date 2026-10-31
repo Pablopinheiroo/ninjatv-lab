@@ -219,7 +219,8 @@ class DonflixProvider : MainAPI() {
                 val episodeUrl = absoluteUrl(anchor.attr("href")) ?: return@mapNotNull null
                 val season = seasonRegex.find(episodeUrl)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 1
                 val episodeNumber = episodeRegex.find(episodeUrl)?.groupValues?.getOrNull(1)?.toIntOrNull()
-                    ?: yearRegex.find(anchor.text())?.groupValues?.getOrNull(1)?.toIntOrNull()
+                    ?: Regex("""(?i)(?:epis[oó]dio|ep\\.?)\\s*(\\d+)""")
+                        .find(anchor.text())?.groupValues?.getOrNull(1)?.toIntOrNull()
                 val label = sequenceOf(
                     anchor.attr("title"),
                     anchor.attr("aria-label"),
@@ -282,9 +283,9 @@ class DonflixProvider : MainAPI() {
     }
 
     /**
-     * Direct media extraction is deliberately not implemented in this module.
-     * The episode's official Donflix page can be opened by the user in a browser,
-     * where the site's own player handles its session and playback flow.
+     * Direct media extraction and player-ticket handling are deliberately not
+     * implemented. This provider currently supplies catalog/detail navigation only;
+     * it does not claim to launch playback inside the app.
      */
     @Suppress("UNUSED_PARAMETER")
     override suspend fun loadLinks(
