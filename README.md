@@ -1,58 +1,56 @@
-**⚠️ This is currently under development, dont use it yet if you're not comfortable with constantly merging new changes**
+# NinjaTV Lab
 
-# `Cloudstream3 Plugin Repo Template`
+> Projeto independente desenvolvido **exclusivamente para fins educacionais**, estudo e testes de desenvolvimento de extensões.
 
-Template for a [Cloudstream3](https://github.com/recloudstream) plugin repo
+O objetivo deste repositório é estudar a estrutura de plugins baseada no ecossistema Cloudstream, a linguagem Kotlin, o sistema de compilação Gradle e a publicação de manifestos por meio do GitHub Actions.
 
-**⚠️ Make sure you check "Include all branches" when using this template**
+## Finalidade e limites
 
- 
-## Getting started with writing your first plugin
+- Este projeto é destinado ao aprendizado de programação, experimentação e testes de compatibilidade.
+- O repositório contém exemplos de código e não hospeda nem distribui filmes, séries, vídeos ou outros conteúdos audiovisuais.
+- O plugin de demonstração atual não é uma integração funcional com um serviço de streaming: ele usa `example.com` como endereço ilustrativo e sua função de busca retorna uma lista vazia.
+- Qualquer integração futura deverá utilizar conteúdo próprio, de domínio público, licenciado ou serviços cujos responsáveis tenham autorizado expressamente o acesso e a integração.
+- Não são objetivo deste projeto contornar controles de acesso, restrições técnicas ou direitos autorais, nem extrair ou redistribuir transmissões de terceiros sem autorização.
 
-This template includes 1 example plugin.
+Este é um projeto independente, sem afiliação, patrocínio ou endosso oficial do NinjaTV ou dos mantenedores do Cloudstream.
 
-1. Open the root build.gradle.kts, read the comments and replace all the placeholders
-2. Familiarize yourself with the project structure. Most files are commented
-3. Build or deploy your first plugin using:
-   - Windows: `.\gradlew.bat ExampleProvider:make` or `.\gradlew.bat ExampleProvider:deployWithAdb`
-   - Linux & Mac: `./gradlew ExampleProvider:make` or `./gradlew ExampleProvider:deployWithAdb`
+## Estrutura do repositório
 
+- `master`: código-fonte, configurações e manifesto do repositório.
+- `builds`: arquivos de plugins compilados (`.cs3`), catálogo `plugins.json` e manifesto `repo.json`.
 
-## Granting All Files Access on Newer Android Devices
+## Compilação
 
-For local plugin testing, you need to grant the app "All Files Access" on newer Android devices (Android 11 and above). Here’s how to do it:
+O GitHub Actions executa a compilação quando há alterações na branch `master` ou `main`. O processo prepara o Java e o Android SDK, compila os módulos e publica os arquivos gerados na branch `builds`.
 
-### Using ADB
+Para uma compilação local em Linux ou macOS:
 
-* `adb shell appops set --uid PACKAGE_NAME MANAGE_EXTERNAL_STORAGE allow`
-* Replace `PACKAGE_NAME` with the name of the package for the Cloudstream3 version you are using:
-   - debug: `com.lagradost.cloudstream3.prerelease.debug`
-   - prerelease: `com.lagradost.cloudstream3.prerelease`
-   - stable: `com.lagradost.cloudstream3`
+```bash
+chmod +x gradlew
+./gradlew make makePluginsJson
+```
 
-### Manually
+No Windows:
 
-1. **Open Settings**: Go to your device’s Settings menu.
+```powershell
+.\gradlew.bat make makePluginsJson
+```
 
-2. **Navigate to Special Access**:
-   - Tap on "Apps & notifications" or "Apps".
-   - Select "Special app access" or "Special access".
+## Manifesto do repositório
 
-3. **Select All Files Access**:
-   - Tap on "All files access".
-   - It may be under the three vertical dots menu towards the top of the screen.
+O arquivo `repo.json` aponta para o catálogo publicado na branch `builds`:
 
-4. **Grant Access to the App**: Find the app in the list and tap on it to toggle it, if it is not already enabled.
+`https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/builds/repo.json`
 
-6. **Restart the App**: Close and reopen the app to apply the changes.
+A compatibilidade desse manifesto deve ser testada no aplicativo de destino. O fato de o formato ser semelhante ao utilizado pelo Cloudstream não garante, por si só, compatibilidade integral com qualquer aplicativo derivado.
 
+## Créditos e atribuição
 
-## License
+A estrutura inicial deste projeto foi baseada no template público [recloudstream/TestPlugins](https://github.com/recloudstream/TestPlugins). Os créditos e as informações de autoria presentes nos arquivos de origem foram preservados. O exemplo de plugin mantém os autores originais indicados no template: **Cloudburst** e **Luna712**.
 
-Everything in this repo is released into the public domain. You may use it however you want with no conditions whatsoever
+Este repositório é uma cópia independente para estudo. Alterações aqui realizadas não modificam nem são enviadas automaticamente ao repositório original.
 
+## Licença do template original
 
-## Attribution
+O README do template de origem declara que o conteúdo do template é disponibilizado em domínio público, sem condições de uso. Consulte também o repositório original e seus avisos para verificar a licença e a atribuição aplicáveis a cada componente.
 
-This template as well as the gradle plugin and the whole plugin system is **heavily** based on [Aliucord](https://github.com/Aliucord).
-*Go use it, it's a great mobile discord client mod!*

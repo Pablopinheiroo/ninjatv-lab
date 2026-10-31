@@ -7,9 +7,8 @@ dependencies {
 version = 1
 
 cloudstream {
-    // All of these properties are optional, you can safely remove any of them.
-
-    description = "Lorem ipsum"
+    // Educational example: this module demonstrates plugin structure and metadata.
+    description = "Exemplo educacional para estudo da estrutura de plugins e da API Cloudstream. Não fornece fontes de reprodução."
     authors = listOf("Cloudburst", "Luna712")
 
     /**
@@ -26,7 +25,7 @@ cloudstream {
     requiresResources = true
     language = "en"
 
-    // Random CC logo I found
+    // Example icon retained from the original template.
     iconUrl = "https://upload.wikimedia.org/wikipedia/commons/2/2f/Korduene_Logo.png"
 }
 
