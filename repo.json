@@ -1,0 +1,8 @@
+{
+  "name": "NinjaTV Lab",
+  "description": "Repositório pessoal de extensões",
+  "manifestVersion": 1,
+  "pluginLists": [
+    "https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/builds/plugins.json"
+  ]
+}
