@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NinjaSolver Lab — Turnstile</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; background: #10141c; color: #edf2f7; }
+    main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { margin-bottom: 6px; }
+    .muted { color: #aab6c5; line-height: 1.5; }
+    .card { background: #1a2230; border: 1px solid #344154; border-radius: 12px; padding: 18px; margin: 16px 0; }
+    label { display: block; margin: 12px 0 6px; }
+    select, button { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 8px; font-size: 16px; }
+    select { background: #0f1722; color: white; border: 1px solid #526176; }
+    button { border: 0; background: #3478d4; color: white; font-weight: 650; margin-top: 12px; }
+    button.secondary { background: #465467; }
+    button:disabled { opacity: .5; }
+    #widget { min-height: 70px; margin-top: 14px; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #0b1018; padding: 12px; border-radius: 8px; }
+    .warning { border-left: 4px solid #e0a83a; padding-left: 12px; }
+    .status { font-weight: 650; }
+  </style>
+  <script>
+    window.NINJA_SCENARIOS = {{ scenarios|tojson }};
+    window.turnstileReady = function () {
+      window.dispatchEvent(new Event("turnstile-ready"));
+    };
+  </script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=turnstileReady&render=explicit" async defer></script>
+</head>
+<body>
+<main>
+  <h1>NinjaSolver Lab</h1>
+  <p class="muted">Laboratório independente para testar a integração oficial do Cloudflare Turnstile em uma página controlada por nós.</p>
+
+  <section class="card warning">
+    <strong>Ambiente de teste</strong>
+    <p class="muted">Usa exclusivamente chaves fictícias oficiais do Cloudflare. Não resolve desafios de sites de terceiros, não gera tokens para outros domínios e não altera a proteção da Superflix.</p>
+  </section>
+
+  <section class="card">
+    <label for="scenario">Cenário</label>
+    <select id="scenario">
+      {% for key, item in scenarios.items() %}
+      <option value="{{ key }}">{{ item.label }}</option>
+      {% endfor %}
+    </select>
+    <div id="widget"></div>
+    <p id="widgetStatus" class="muted status">Aguardando o carregamento do Turnstile…</p>
+    <button id="verify" disabled>Validar token no servidor</button>
+    <button id="auxFailure" class="secondary">Simular falha auxiliar local (503)</button>
+  </section>
+
+  <section class="card">
+    <h2>Resultado</h2>
+    <p id="result" class="muted">Nenhum teste executado.</p>
+    <pre id="raw">A resposta JSON aparecerá aqui.</pre>
+  </section>
+
+  <section class="card">
+    <h2>Como interpretar</h2>
+    <p class="muted">O widget do navegador emite um token fictício de teste. O servidor desta aplicação envia esse token ao endpoint Siteverify usando a chave secreta de teste correspondente. A chave secreta nunca é enviada ao navegador.</p>
+    <p class="muted">A simulação 503 afeta somente uma rota local deste laboratório. Ela não bloqueia <code>cloudflareinsights.com</code>, <code>challenges.cloudflare.com</code> nem qualquer site externo.</p>
+  </section>
+</main>
+<script>
+(() => {
+  const selector = document.getElementById("scenario");
+  const widgetNode = document.getElementById("widget");
+  const widgetStatus = document.getElementById("widgetStatus");
+  const verifyButton = document.getElementById("verify");
+  const resultNode = document.getElementById("result");
+  const rawNode = document.getElementById("raw");
+  let widgetId = null;
+  let token = "";
+  let apiReady = false;
+
+  function show(data) {
+    rawNode.textContent = JSON.stringify(data, null, 2);
+  }
+
+  function renderWidget() {
+    token = "";
+    verifyButton.disabled = true;
+    widgetNode.innerHTML = "";
+    if (!apiReady || !window.turnstile) {
+      widgetStatus.textContent = "Aguardando a API oficial do Turnstile…";
+      return;
+    }
+    const config = window.NINJA_SCENARIOS[selector.value];
+    widgetStatus.textContent = "Renderizando: " + config.label;
+    try {
+      widgetId = window.turnstile.render(widgetNode, {
+        sitekey: config.sitekey,
+        callback: (value) => {
+          token = value;
+          verifyButton.disabled = false;
+          widgetStatus.textContent = "Token de teste recebido. Pronto para validar no servidor.";
+        },
+        "error-callback": (code) => {
+          token = "";
+          verifyButton.disabled = true;
+          widgetStatus.textContent = "O widget informou erro: " + (code || "sem código");
+        },
+        "expired-callback": () => {
+          token = "";
+          verifyButton.disabled = true;
+          widgetStatus.textContent = "Token expirado. Reinicie o widget.";
+        }
+      });
+    } catch (error) {
+      widgetStatus.textContent = "Falha ao renderizar: " + error.message;
+    }
+  }
+
+  window.addEventListener("turnstile-ready", () => {
+    apiReady = true;
+    renderWidget();
+  });
+
+  selector.addEventListener("change", () => {
+    if (window.turnstile && widgetId !== null) {
+      try { window.turnstile.remove(widgetId); } catch (_) {}
+      widgetId = null;
+    }
+    renderWidget();
+  });
+
+  verifyButton.addEventListener("click", async () => {
+    if (!token) return;
+    verifyButton.disabled = true;
+    resultNode.textContent = "Consultando o Siteverify…";
+    try {
+      const response = await fetch("/verify", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({scenario: selector.value, token})
+      });
+      const data = await response.json();
+      resultNode.textContent = data.success
+        ? "Siteverify retornou sucesso."
+        : "Siteverify não aprovou o token (resultado esperado em alguns cenários).";
+      show(data);
+    } catch (error) {
+      resultNode.textContent = "Falha de comunicação com o servidor local.";
+      show({error: error.message});
+    } finally {
+      token = "";
+      verifyButton.disabled = true;
+      if (window.turnstile && widgetId !== null) {
+        try { window.turnstile.reset(widgetId); } catch (_) {}
+      }
+    }
+  });
+
+  document.getElementById("auxFailure").addEventListener("click", async () => {
+    resultNode.textContent = "Solicitando falha auxiliar simulada…";
+    try {
+      const response = await fetch("/simulate-auxiliary-failure", {method: "POST"});
+      const data = await response.json();
+      resultNode.textContent = "Falha auxiliar local simulada. O widget Turnstile não foi alterado.";
+      show(data);
+    } catch (error) {
+      resultNode.textContent = "Não foi possível executar a simulação local.";
+      show({error: error.message});
+    }
+  });
+})();
+</script>
+</body>
+</html>
