@@ -47,7 +47,7 @@ class SuperflixFilmesProvider : MainAPI() {
 
     companion object {
         const val BASE_URL = "https://superflixapi.boats"
-        private const val DOCUMENTED_TEST_ID = "tt0068646"
+        private const val DOCUMENTED_TEST_ID = "1135465"
 
         // Domínios oficiais/aliases conhecidos do SuperFlix. O domínio da
         // página pode redirecionar, enquanto o iframe já usa o domínio atual.
@@ -211,7 +211,7 @@ class SuperflixFilmesProvider : MainAPI() {
 
     private fun documentedTestMovie(): SearchResponse {
         return newMovieSearchResponse(
-            "O Poderoso Chefão — teste de integração",
+            "Filme de teste SuperFlix — ID 1135465",
             "$mainUrl/filme/$DOCUMENTED_TEST_ID",
             TvType.Movie
         ) {
@@ -504,7 +504,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 }
             }
 
-            logDiagnostic("Diagnóstico SuperFlix v2.3 iniciado.")
+            logDiagnostic("Diagnóstico SuperFlix v2.4 iniciado.")
 
             fun closeFullscreen() {
                 val activeDialog = fullscreenDialog
@@ -584,15 +584,12 @@ class SuperflixFilmesProvider : MainAPI() {
 
             webView.setBackgroundColor(Color.BLACK)
             webView.visibility = View.INVISIBLE
+            // A URL /filme/ID já é a página de incorporação/reprodução.
+            // Exibi-la diretamente evita procurar um segundo iframe que não existe.
             webView.webViewClient = diagnosticWebViewClient {
-                if (wrapperLoaded) {
-                    webView.visibility = View.VISIBLE
-                    progress.visibility = View.GONE
-                } else if (!scanStarted) {
-                    scanStarted = true
-                    logDiagnostic("Página de origem carregada; procurando o iframe.")
-                    scanForEmbed(0)
-                }
+                webView.visibility = View.VISIBLE
+                progress.visibility = View.GONE
+                logDiagnostic("Página original do player exibida diretamente; busca por iframe interno desativada.")
             }
 
             webView.webChromeClient = object : WebChromeClient() {
