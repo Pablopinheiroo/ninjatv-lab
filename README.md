@@ -15,6 +15,12 @@ O módulo `Donflix` é uma implementação experimental de catálogo. Ele consul
 
 **Estado atual:** o módulo não utiliza WebView. A integração com o player nativo ainda não está concluída; o provider não entrega fontes de vídeo ao player do aplicativo nesta versão.
 
+## Provider Superflix Filmes (teste experimental)
+
+O módulo `SuperflixFilmes` consulta o catálogo público de filmes e usa a rota de filme documentada pela SuperFlixAPI. A primeira entrada de teste usa o exemplo de IMDb `tt0068646` (O Poderoso Chefão) citado na documentação pública.
+
+**Reprodução:** a documentação pública da SuperFlixAPI fornece uma página de player incorporável por iframe, não uma URL direta de mídia. Por isso, nesta primeira versão, o botão de reprodução encaminha o usuário à página oficial do filme no navegador do dispositivo. A versão não declara reprodução dentro do player nativo do NinjaTV.
+
 ## Finalidade e limites
 
 - O projeto é destinado ao aprendizado de programação, experimentação e testes de compatibilidade.
