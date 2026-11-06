@@ -381,7 +381,7 @@ class SuperflixFilmesProvider : MainAPI() {
                         function describe(element) {
                             if (!element) return "(elemento não identificado)";
                             var label = (element.innerText || element.textContent || "")
-                                .replace(/\\s+/g, " ").trim().slice(0, 55);
+                                .replace(/\s+/g, " ").trim().slice(0, 55);
                             var href = element.getAttribute ? (element.getAttribute("href") || "") : "";
                             if (href && href !== "javascript:void(0)") {
                                 try {
@@ -427,7 +427,7 @@ class SuperflixFilmesProvider : MainAPI() {
                                 function reportPlayerControls() {
                                     doc.querySelectorAll("a,button,[role='button'],[onclick]").forEach(function (element) {
                                         var label = (element.innerText || element.textContent || "")
-                                            .replace(/\\s+/g, " ").trim();
+                                            .replace(/\s+/g, " ").trim();
                                         if (!/dublado|legendado|servidor|principal|alternativo/i.test(label)) return;
                                         var description = describe(element);
                                         if (!seen.has(description)) {
