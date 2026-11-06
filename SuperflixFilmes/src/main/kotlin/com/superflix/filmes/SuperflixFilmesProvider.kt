@@ -417,7 +417,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 textSize = 11f
                 setPadding(12, 10, 12, 10)
                 setBackgroundColor(0xD9000000.toInt())
-                isTextSelectable = true
+                setTextIsSelectable(true)
             }
             val diagnosticScroll = ScrollView(hostActivity).apply {
                 addView(
