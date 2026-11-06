@@ -366,6 +366,105 @@ class SuperflixFilmesProvider : MainAPI() {
                     frameborder="0"
                     scrolling="no">
                 </iframe>
+                <script>
+                    (function () {
+                        function say(message) {
+                            try { console.log("[SF-DIAG] " + String(message).slice(0, 180)); } catch (e) {}
+                        }
+
+                        var frame = document.querySelector("iframe");
+                        if (!frame) {
+                            say("iframe ausente no HTML de incorporação");
+                            return;
+                        }
+
+                        function describe(element) {
+                            if (!element) return "(elemento não identificado)";
+                            var label = (element.innerText || element.textContent || "")
+                                .replace(/\\s+/g, " ").trim().slice(0, 55);
+                            var href = element.getAttribute ? (element.getAttribute("href") || "") : "";
+                            if (href && href !== "javascript:void(0)") {
+                                try {
+                                    var parsed = new URL(href, frame.src);
+                                    href = parsed.host + parsed.pathname;
+                                } catch (e) {
+                                    href = "(link não disponível)";
+                                }
+                            }
+                            return element.tagName + " texto=" + label + " link=" + (href || "(sem link)");
+                        }
+
+                        say("iframe solicitado: " + frame.src);
+
+                        function attachDiagnostics() {
+                            say("iframe carregado: " + frame.src);
+                            try {
+                                var doc = frame.contentDocument;
+                                if (!doc || !doc.documentElement) {
+                                    say("documento interno do iframe indisponível");
+                                    return;
+                                }
+
+                                var path = "/";
+                                try { path = frame.contentWindow.location.pathname; } catch (e) {
+                                    path = "(caminho protegido por origem diferente)";
+                                }
+                                say("documento interno acessível; caminho=" + path);
+
+                                if (doc.__sfDiagInstalled) return;
+                                doc.__sfDiagInstalled = true;
+
+                                doc.addEventListener("click", function (event) {
+                                    var target = event.target;
+                                    if (target && target.nodeType === 3) target = target.parentElement;
+                                    var clickable = target && target.closest
+                                        ? target.closest("a,button,[role='button'],[onclick]")
+                                        : target;
+                                    say("clique dentro do iframe: " + describe(clickable || target));
+                                }, true);
+
+                                var seen = new Set();
+                                function reportPlayerControls() {
+                                    doc.querySelectorAll("a,button,[role='button'],[onclick]").forEach(function (element) {
+                                        var label = (element.innerText || element.textContent || "")
+                                            .replace(/\\s+/g, " ").trim();
+                                        if (!/dublado|legendado|servidor|principal|alternativo/i.test(label)) return;
+                                        var description = describe(element);
+                                        if (!seen.has(description)) {
+                                            seen.add(description);
+                                            say("controle encontrado: " + description);
+                                        }
+                                    });
+                                }
+
+                                reportPlayerControls();
+                                var pending = false;
+                                var observer = new MutationObserver(function () {
+                                    if (pending) return;
+                                    pending = true;
+                                    setTimeout(function () {
+                                        pending = false;
+                                        reportPlayerControls();
+                                    }, 120);
+                                });
+                                observer.observe(doc.documentElement, {
+                                    childList: true,
+                                    subtree: true
+                                });
+                            } catch (error) {
+                                say("não foi possível observar o conteúdo interno: " +
+                                    (error && error.name ? error.name : "erro"));
+                            }
+                        }
+
+                        frame.addEventListener("load", function () {
+                            setTimeout(attachDiagnostics, 0);
+                        });
+                        if (frame.contentDocument && frame.contentDocument.readyState === "complete") {
+                            setTimeout(attachDiagnostics, 0);
+                        }
+                    })();
+                </script>
             </body>
             </html>
         """.trimIndent()
@@ -553,7 +652,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 }
             }
 
-            logDiagnostic("Diagnóstico SuperFlix v2.4 iniciado.")
+            logDiagnostic("Diagnóstico SuperFlix v2.6 iniciado.")
 
             fun closeFullscreen() {
                 val activeDialog = fullscreenDialog
