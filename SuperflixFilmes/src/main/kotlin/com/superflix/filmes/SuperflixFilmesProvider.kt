@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.utils.loadExtractor
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.net.URLEncoder
@@ -238,11 +239,10 @@ class SuperflixFilmesProvider : MainAPI() {
     }
 
     /**
-     * Opens the documented SuperFlix player page in the user's browser.
-     *
-     * The public integration describes an iframe page. It does not publish a
-     * direct media URL suitable for ExtractorLink, so this method does not
-     * pretend the HTML page is a native video stream.
+     * First lets any extractor already registered by the NinjaTV host handle
+     * the official player page. If none returns a media link, opens the
+     * documented iframe page in the device browser. This provider does not
+     * resolve protected stream URLs itself.
      */
     override suspend fun loadLinks(
         data: String,
@@ -259,6 +259,16 @@ class SuperflixFilmesProvider : MainAPI() {
         ) {
             return false
         }
+
+        var foundNativeLink = false
+        val extractorMatched = runCatching {
+            loadExtractor(playerUrl, mainUrl, subtitleCallback) { link ->
+                foundNativeLink = true
+                callback(link)
+            }
+        }.getOrDefault(false)
+
+        if (extractorMatched && foundNativeLink) return true
 
         val context = appContext ?: return false
         return runCatching {
