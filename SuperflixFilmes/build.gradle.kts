@@ -1,7 +1,7 @@
-version = 25
+version = 26
 
 cloudstream {
-    description = "v2.5 — Diagnóstico recolhido e registro de toques, navegações e pop-ups."
+    description = "v2.6 — Diagnóstico dos cliques e controles dentro do iframe."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("Movie")
