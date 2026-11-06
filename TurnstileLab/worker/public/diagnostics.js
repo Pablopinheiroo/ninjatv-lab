@@ -117,7 +117,7 @@
         online: navigator.onLine,
         cookieEnabled: navigator.cookieEnabled,
         viewport: { width: innerWidth, height: innerHeight },
-        webViewHint: /; wv\\)/i.test(ua)
+        webViewHint: ua.includes("; wv)")
       },
       features,
       hints: {
