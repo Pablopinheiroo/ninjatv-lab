@@ -1,7 +1,7 @@
-version = 29
+version = 30
 
 cloudstream {
-    description = "v2.9 — Bloqueio de redirecionamentos publicitários e rastreadores observados."
+    description = "v3.0 — Ajustes de compatibilidade WebView e diagnóstico do Cloudflare."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("Movie")
