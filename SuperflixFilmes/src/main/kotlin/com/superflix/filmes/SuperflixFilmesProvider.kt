@@ -5,6 +5,7 @@ import android.app.Dialog
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -728,6 +729,36 @@ class SuperflixFilmesProvider : MainAPI() {
                 }
             }
 
+            @SuppressLint("SetJavaScriptEnabled")
+            fun configurePlayerWebView(target: WebView, reference: WebView? = null) {
+                target.settings.apply {
+                    javaScriptEnabled = true
+                    domStorageEnabled = true
+                    allowFileAccess = true
+                    allowContentAccess = true
+                    javaScriptCanOpenWindowsAutomatically = true
+                    setSupportMultipleWindows(true)
+                    mediaPlaybackRequiresUserGesture = false
+                    loadsImagesAutomatically = true
+                    useWideViewPort = true
+                    // A configuração recomendada pela Cloudflare para WebView móvel.
+                    loadWithOverviewMode = true
+                    textZoom = 100
+                    mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                    cacheMode = WebSettings.LOAD_DEFAULT
+                    safeBrowsingEnabled = true
+                    // Pop-ups mantêm exatamente o mesmo User-Agent da janela principal.
+                    if (reference != null) {
+                        userAgentString = reference.settings.userAgentString
+                    }
+                }
+                CookieManager.getInstance().apply {
+                    setAcceptCookie(true)
+                    setAcceptThirdPartyCookies(target, true)
+                    flush()
+                }
+            }
+
             fun closeTopPopup() {
                 val popup = popupViews.lastOrNull() ?: return
                 root.removeView(popup)
@@ -824,6 +855,42 @@ class SuperflixFilmesProvider : MainAPI() {
                     onFinished(url)
                 }
 
+                override fun onRenderProcessGone(
+                    view: WebView?,
+                    detail: android.webkit.RenderProcessGoneDetail?
+                ): Boolean {
+                    val didCrash = detail?.didCrash()
+                    handler.post {
+                        if (view != null) {
+                            val wasMainWebView = view === webView
+                            (view.parent as? ViewGroup)?.removeView(view)
+                            popupViews.remove(view)
+                            runCatching { view.destroy() }
+                            logDiagnostic(
+                                "Processo de renderização WebView encerrado; " +
+                                    "principal=$wasMainWebView; didCrash=$didCrash."
+                            )
+                            if (wasMainWebView) {
+                                progress.visibility = View.GONE
+                                Toast.makeText(
+                                    hostActivity,
+                                    "O mecanismo da página foi encerrado. Feche e abra o player novamente.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                val previous = popupViews.lastOrNull() ?: webView
+                                previous.visibility = View.VISIBLE
+                                previous.bringToFront()
+                                popupCloseButton.visibility =
+                                    if (popupViews.isEmpty()) View.GONE else View.VISIBLE
+                                popupCloseButton.bringToFront()
+                                diagnosticToggle.bringToFront()
+                            }
+                        }
+                    }
+                    return true
+                }
+
                 override fun onReceivedHttpError(
                     view: WebView?,
                     request: android.webkit.WebResourceRequest?,
@@ -857,7 +924,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 }
             }
 
-            logDiagnostic("Diagnóstico SuperFlix v3.0 iniciado.")
+            logDiagnostic("Diagnóstico SuperFlix v3.1 iniciado.")
 
             fun closeFullscreen() {
                 val activeDialog = fullscreenDialog
@@ -923,32 +990,25 @@ class SuperflixFilmesProvider : MainAPI() {
 
             val activeWebViewPackage = WebView.getCurrentWebViewPackage()
             logDiagnostic(
-                "WebView ativo: ${activeWebViewPackage?.packageName ?: "não identificado"} " +
-                    "versão ${activeWebViewPackage?.versionName ?: "desconhecida"}"
+                "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}); " +
+                    "${Build.MANUFACTURER} ${Build.MODEL}"
             )
-
-            webView.settings.apply {
-                javaScriptEnabled = true
-                domStorageEnabled = true
-                allowFileAccess = true
-                allowContentAccess = true
-                javaScriptCanOpenWindowsAutomatically = true
-                // Alguns botões de idioma do player abrem o parceiro em uma
-                // nova janela. Sem suporte a múltiplas janelas, o toque não faz nada.
-                setSupportMultipleWindows(true)
-                mediaPlaybackRequiresUserGesture = false
-                loadsImagesAutomatically = true
-                useWideViewPort = true
-                loadWithOverviewMode = false
-                textZoom = 100
-                mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-            }
-            CookieManager.getInstance().apply {
-                setAcceptCookie(true)
-                setAcceptThirdPartyCookies(webView, true)
-                flush()
-            }
-            logDiagnostic("JavaScript=${webView.settings.javaScriptEnabled}; DOMStorage=${webView.settings.domStorageEnabled}; UA=${webView.settings.userAgentString}")
+            logDiagnostic(
+                "WebView ativo: ${activeWebViewPackage?.packageName ?: "não identificado"} " +
+                    "versão ${activeWebViewPackage?.versionName ?: "desconhecida"} " +
+                    "(code ${activeWebViewPackage?.longVersionCode ?: -1L})"
+            )
+            configurePlayerWebView(webView)
+            logDiagnostic(
+                "Configuração: JS=${webView.settings.javaScriptEnabled}; " +
+                    "DOM=${webView.settings.domStorageEnabled}; " +
+                    "cookies=${CookieManager.getInstance().acceptCookie()}; " +
+                    "terceiros=${CookieManager.getInstance().acceptThirdPartyCookies(webView)}; " +
+                    "overview=${webView.settings.loadWithOverviewMode}; " +
+                    "mixedContent=${webView.settings.mixedContentMode}"
+            )
+            // Mantém o User-Agent nativo do provedor; não falsifica navegador ou dispositivo.
+            logDiagnostic("User-Agent nativo: ${webView.settings.userAgentString}")
 
             webView.setBackgroundColor(Color.BLACK)
             webView.visibility = View.INVISIBLE
@@ -987,20 +1047,7 @@ class SuperflixFilmesProvider : MainAPI() {
                     // Abre pop-ups do próprio fluxo do player dentro do mesmo
                     // diálogo, em vez de deixar o toque sem resposta.
                     val popup = WebView(hostActivity)
-                    popup.settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        javaScriptCanOpenWindowsAutomatically = true
-                        setSupportMultipleWindows(true)
-                        mediaPlaybackRequiresUserGesture = false
-                        loadsImagesAutomatically = true
-                        useWideViewPort = true
-                        loadWithOverviewMode = false
-                        textZoom = 100
-                        mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-                    }
-                    CookieManager.getInstance().setAcceptCookie(true)
-                    CookieManager.getInstance().setAcceptThirdPartyCookies(popup, true)
+                    configurePlayerWebView(popup, webView)
                     popup.setBackgroundColor(Color.BLACK)
                     popup.webViewClient = diagnosticWebViewClient {
                         progress.visibility = View.GONE
@@ -1133,9 +1180,9 @@ class SuperflixFilmesProvider : MainAPI() {
                     popup.destroy()
                 }
                 popupViews.clear()
-                webView.stopLoading()
+                runCatching { webView.stopLoading() }
                 (webView.parent as? ViewGroup)?.removeView(webView)
-                webView.destroy()
+                runCatching { webView.destroy() }
             }
 
             dialog.show()
