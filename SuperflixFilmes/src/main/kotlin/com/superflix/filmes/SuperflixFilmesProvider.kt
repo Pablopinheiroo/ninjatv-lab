@@ -422,7 +422,7 @@ class SuperflixFilmesProvider : MainAPI() {
             val diagnosticScroll = ScrollView(hostActivity).apply {
                 addView(
                     diagnosticText,
-                    ScrollView.LayoutParams(
+                    FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
                     )
@@ -455,7 +455,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 diagnosticText.append("• $safeMessage\n")
                 val maxChars = 9000
                 if (diagnosticText.length() > maxChars) {
-                    diagnosticText.text = diagnosticText.text.takeLast(7000)
+                    diagnosticText.setText(diagnosticText.text.takeLast(7000))
                 }
                 diagnosticScroll.post { diagnosticScroll.fullScroll(View.FOCUS_DOWN) }
             }
