@@ -1,6 +1,6 @@
-# NinjaSolver Lab — Cloudflare Workers
+# NinjaSolver Lab 0.2 — Cloudflare Workers
 
-Versão online do laboratório Turnstile. Este projeto fica separado dos plugins Cloudstream e não modifica a SuperflixFilmes nem o Donflix.
+Versão online do laboratório Turnstile com painel de diagnóstico local do navegador. Este projeto fica separado dos plugins Cloudstream e não modifica a SuperflixFilmes nem o Donflix.
 
 ## Limites
 
