@@ -379,6 +379,8 @@ class SuperflixFilmesProvider : MainAPI() {
                 )
             }
 
+            val popupViews = mutableListOf<WebView>()
+
             val dialog = Dialog(hostActivity)
             dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
             dialog.setContentView(root)
@@ -453,7 +455,9 @@ class SuperflixFilmesProvider : MainAPI() {
                 javaScriptEnabled = true
                 domStorageEnabled = true
                 javaScriptCanOpenWindowsAutomatically = true
-                setSupportMultipleWindows(false)
+                // Alguns botões de idioma do player abrem o parceiro em uma
+                // nova janela. Sem suporte a múltiplas janelas, o toque não faz nada.
+                setSupportMultipleWindows(true)
                 mediaPlaybackRequiresUserGesture = false
                 loadsImagesAutomatically = true
                 mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
@@ -477,6 +481,69 @@ class SuperflixFilmesProvider : MainAPI() {
             }
 
             webView.webChromeClient = object : WebChromeClient() {
+                override fun onCreateWindow(
+                    view: WebView?,
+                    isDialog: Boolean,
+                    isUserGesture: Boolean,
+                    resultMsg: android.os.Message?
+                ): Boolean {
+                    if (!dialog.isShowing || resultMsg == null) return false
+
+                    // Abre pop-ups do próprio fluxo do player dentro do mesmo
+                    // diálogo, em vez de deixar o toque sem resposta.
+                    val popup = WebView(hostActivity)
+                    popup.settings.apply {
+                        javaScriptEnabled = true
+                        domStorageEnabled = true
+                        javaScriptCanOpenWindowsAutomatically = true
+                        setSupportMultipleWindows(true)
+                        mediaPlaybackRequiresUserGesture = false
+                        loadsImagesAutomatically = true
+                        mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                    }
+                    CookieManager.getInstance().setAcceptCookie(true)
+                    CookieManager.getInstance().setAcceptThirdPartyCookies(popup, true)
+                    popup.setBackgroundColor(Color.BLACK)
+                    popup.webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                            progress.visibility = View.GONE
+                        }
+                    }
+                    popup.webChromeClient = this
+                    root.addView(
+                        popup,
+                        FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                    )
+                    popup.bringToFront()
+                    progress.bringToFront()
+                    popupViews.add(popup)
+
+                    val transport = resultMsg.obj as? WebView.WebViewTransport
+                        ?: run {
+                            root.removeView(popup)
+                            popup.destroy()
+                            popupViews.remove(popup)
+                            return false
+                        }
+                    transport.webView = popup
+                    resultMsg.sendToTarget()
+                    return true
+                }
+
+                override fun onCloseWindow(window: WebView?) {
+                    val popup = window ?: return
+                    root.removeView(popup)
+                    popup.stopLoading()
+                    popup.destroy()
+                    popupViews.remove(popup)
+                    val previous = popupViews.lastOrNull() ?: webView
+                    previous.bringToFront()
+                }
+
                 override fun onShowCustomView(
                     view: View?,
                     callback: CustomViewCallback?
@@ -539,6 +606,12 @@ class SuperflixFilmesProvider : MainAPI() {
                 fullscreenDialog?.dismiss()
                 fullscreenDialog = null
                 handler.removeCallbacksAndMessages(null)
+                popupViews.toList().forEach { popup ->
+                    popup.stopLoading()
+                    (popup.parent as? ViewGroup)?.removeView(popup)
+                    popup.destroy()
+                }
+                popupViews.clear()
                 webView.stopLoading()
                 (webView.parent as? ViewGroup)?.removeView(webView)
                 webView.destroy()
