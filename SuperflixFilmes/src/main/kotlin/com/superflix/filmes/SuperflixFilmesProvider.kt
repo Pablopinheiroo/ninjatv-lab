@@ -341,18 +341,25 @@ class SuperflixFilmesProvider : MainAPI() {
                         margin: 0;
                         padding: 0;
                         width: 100%;
+                        height: 100%;
                         min-height: 100%;
                         background: #000;
                         overflow: hidden;
                     }
+                    body {
+                        height: 100vh;
+                        height: 100dvh;
+                    }
                     iframe {
                         display: block;
                         width: 100%;
-                        aspect-ratio: 16 / 9;
-                        height: auto;
+                        height: 100vh;
+                        height: 100dvh;
+                        min-height: 100vh;
+                        min-height: 100dvh;
                         max-width: 100%;
                         border: 0;
-                        border-radius: 12px;
+                        border-radius: 0;
                     }
                 </style>
             </head>
@@ -363,8 +370,7 @@ class SuperflixFilmesProvider : MainAPI() {
                     allowfullscreen
                     webkitallowfullscreen
                     mozallowfullscreen
-                    frameborder="0"
-                    scrolling="no">
+                    frameborder="0">
                 </iframe>
                 <script>
                     (function () {
@@ -602,6 +608,32 @@ class SuperflixFilmesProvider : MainAPI() {
                 }
             )
 
+            // Botão de retorno visível somente quando uma janela nova é aberta.
+            // Ele fecha apenas a janela ativa e retorna ao player original.
+            val popupCloseButton = TextView(hostActivity).apply {
+                text = "VOLTAR AO PLAYER"
+                visibility = View.GONE
+                setTextColor(Color.WHITE)
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setPadding(14, 10, 14, 10)
+                setBackgroundColor(0xDD202020.toInt())
+                elevation = 10f * density
+                isClickable = true
+                isFocusable = true
+            }
+            root.addView(
+                popupCloseButton,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    (42 * density).toInt(),
+                    Gravity.TOP or Gravity.START
+                ).apply {
+                    topMargin = (10 * density).toInt()
+                    leftMargin = (10 * density).toInt()
+                }
+            )
+
             fun safeAddress(raw: String?): String {
                 if (raw.isNullOrBlank()) return "(endereço indisponível)"
                 val uri = runCatching { Uri.parse(raw) }.getOrNull()
@@ -625,6 +657,31 @@ class SuperflixFilmesProvider : MainAPI() {
                     diagnosticScroll.post { diagnosticScroll.fullScroll(View.FOCUS_DOWN) }
                 }
             }
+
+            fun closeTopPopup() {
+                val popup = popupViews.lastOrNull() ?: return
+                root.removeView(popup)
+                popup.stopLoading()
+                popup.destroy()
+                popupViews.remove(popup)
+
+                val previous = popupViews.lastOrNull() ?: webView
+                previous.visibility = View.VISIBLE
+                previous.bringToFront()
+
+                popupCloseButton.visibility =
+                    if (popupViews.isEmpty()) View.GONE else View.VISIBLE
+                if (diagnosticScroll.visibility == View.VISIBLE) {
+                    diagnosticScroll.bringToFront()
+                }
+                if (popupCloseButton.visibility == View.VISIBLE) {
+                    popupCloseButton.bringToFront()
+                }
+                diagnosticToggle.bringToFront()
+                logDiagnostic("Janela fechada pelo usuário; retorno à tela anterior.")
+            }
+
+            popupCloseButton.setOnClickListener { closeTopPopup() }
 
             fun diagnosticWebViewClient(
                 onFinished: (String?) -> Unit = {}
@@ -682,7 +739,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 }
             }
 
-            logDiagnostic("Diagnóstico SuperFlix v2.7 iniciado.")
+            logDiagnostic("Diagnóstico SuperFlix v2.8 iniciado.")
 
             fun closeFullscreen() {
                 val activeDialog = fullscreenDialog
@@ -755,6 +812,9 @@ class SuperflixFilmesProvider : MainAPI() {
                 setSupportMultipleWindows(true)
                 mediaPlaybackRequiresUserGesture = false
                 loadsImagesAutomatically = true
+                useWideViewPort = true
+                loadWithOverviewMode = false
+                textZoom = 100
                 mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             }
             CookieManager.getInstance().setAcceptCookie(true)
@@ -804,6 +864,9 @@ class SuperflixFilmesProvider : MainAPI() {
                         setSupportMultipleWindows(true)
                         mediaPlaybackRequiresUserGesture = false
                         loadsImagesAutomatically = true
+                        useWideViewPort = true
+                        loadWithOverviewMode = false
+                        textZoom = 100
                         mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                     }
                     CookieManager.getInstance().setAcceptCookie(true)
@@ -822,11 +885,14 @@ class SuperflixFilmesProvider : MainAPI() {
                     )
                     popup.bringToFront()
                     progress.bringToFront()
+                    popupViews.add(popup)
+                    popupCloseButton.visibility = View.VISIBLE
+                    popupCloseButton.bringToFront()
                     if (diagnosticScroll.visibility == View.VISIBLE) {
                         diagnosticScroll.bringToFront()
                     }
                     diagnosticToggle.bringToFront()
-                    popupViews.add(popup)
+                    popupCloseButton.bringToFront()
 
                     val transport = resultMsg.obj as? WebView.WebViewTransport
                         ?: run {
@@ -847,7 +913,17 @@ class SuperflixFilmesProvider : MainAPI() {
                     popup.destroy()
                     popupViews.remove(popup)
                     val previous = popupViews.lastOrNull() ?: webView
+                    previous.visibility = View.VISIBLE
                     previous.bringToFront()
+                    popupCloseButton.visibility =
+                        if (popupViews.isEmpty()) View.GONE else View.VISIBLE
+                    if (diagnosticScroll.visibility == View.VISIBLE) {
+                        diagnosticScroll.bringToFront()
+                    }
+                    if (popupCloseButton.visibility == View.VISIBLE) {
+                        popupCloseButton.bringToFront()
+                    }
+                    diagnosticToggle.bringToFront()
                 }
 
                 override fun onShowCustomView(
@@ -896,10 +972,19 @@ class SuperflixFilmesProvider : MainAPI() {
                 ) {
                     if (fullscreenDialog != null) {
                         closeFullscreen()
-                    } else if (webView.canGoBack()) {
-                        webView.goBack()
                     } else {
-                        dialog.dismiss()
+                        val activePopup = popupViews.lastOrNull()
+                        if (activePopup != null) {
+                            if (activePopup.canGoBack()) {
+                                activePopup.goBack()
+                            } else {
+                                closeTopPopup()
+                            }
+                        } else if (webView.canGoBack()) {
+                            webView.goBack()
+                        } else {
+                            dialog.dismiss()
+                        }
                     }
                     true
                 } else {
