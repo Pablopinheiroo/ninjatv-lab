@@ -69,7 +69,7 @@
         platform: navigator.platform || null,
         online: navigator.onLine,
         viewport: { width: innerWidth, height: innerHeight },
-        webViewHint: /; wv\)|Version\\/[0-9.]+ Chrome\\//i.test(ua)
+        webViewHint: /; wv\)/i.test(ua)
       },
       hints,
       frames,
