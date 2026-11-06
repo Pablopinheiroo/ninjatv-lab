@@ -542,6 +542,39 @@ class SuperflixFilmesProvider : MainAPI() {
                                 }
 
                                 reportPlayerControls();
+
+                                // Diagnóstico de reprodução: registra eventos e metadados
+                                // técnicos, mas nunca grava cookies, tokens, cabeçalhos ou URLs
+                                // completos de mídia. Iframes de outra origem permanecem isolados.
+                                var mediaSeen = new WeakSet();
+                                function safeHost(raw) {
+                                    try { return new URL(raw, doc.location.href).host || "(sem host)"; }
+                                    catch (e) { return "(origem indisponível)"; }
+                                }
+                                function inspectMedia() {
+                                    doc.querySelectorAll("video, audio").forEach(function (media) {
+                                        if (mediaSeen.has(media)) return;
+                                        mediaSeen.add(media);
+                                        function state(eventName) {
+                                            var source = media.currentSrc || media.src || "";
+                                            say("[SF-PLAYER] " + eventName +
+                                                " tag=" + media.tagName +
+                                                " host=" + (source ? safeHost(source) : "(fonte ainda não definida)") +
+                                                " readyState=" + media.readyState +
+                                                " networkState=" + media.networkState +
+                                                " paused=" + media.paused +
+                                                " duration=" + (Number.isFinite(media.duration) ? Math.round(media.duration) : "indefinida") +
+                                                " error=" + (media.error ? media.error.code : "nenhum"));
+                                        }
+                                        ["loadstart", "loadedmetadata", "loadeddata", "canplay",
+                                         "playing", "waiting", "stalled", "pause", "ended", "error"].forEach(function (name) {
+                                            media.addEventListener(name, function () { state("evento=" + name); });
+                                        });
+                                        state("elemento de mídia encontrado");
+                                    });
+                                }
+                                inspectMedia();
+
                                 var pending = false;
                                 var observer = new MutationObserver(function () {
                                     if (pending) return;
@@ -549,6 +582,7 @@ class SuperflixFilmesProvider : MainAPI() {
                                     setTimeout(function () {
                                         pending = false;
                                         reportPlayerControls();
+                                        inspectMedia();
                                     }, 120);
                                 });
                                 observer.observe(doc.documentElement, {
@@ -924,7 +958,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 }
             }
 
-            logDiagnostic("Diagnóstico SuperFlix v3.1 iniciado.")
+            logDiagnostic("Diagnóstico SuperFlix v3.2 iniciado.")
 
             fun closeFullscreen() {
                 val activeDialog = fullscreenDialog
