@@ -381,7 +381,7 @@ class SuperflixFilmesProvider : MainAPI() {
                         function describe(element) {
                             if (!element) return "(elemento não identificado)";
                             var label = (element.innerText || element.textContent || "")
-                                .replace(/\s+/g, " ").trim().slice(0, 55);
+                                .replace(/\s+/g, " ").trim().slice(0, 45);
                             var href = element.getAttribute ? (element.getAttribute("href") || "") : "";
                             if (href && href !== "javascript:void(0)") {
                                 try {
@@ -391,7 +391,34 @@ class SuperflixFilmesProvider : MainAPI() {
                                     href = "(link não disponível)";
                                 }
                             }
-                            return element.tagName + " texto=" + label + " link=" + (href || "(sem link)");
+
+                            function visualState(node) {
+                                try {
+                                    var style = doc.defaultView.getComputedStyle(node);
+                                    var rect = node.getBoundingClientRect();
+                                    var classText = typeof node.className === "string"
+                                        ? node.className.replace(/\\s+/g, ".").slice(0, 55)
+                                        : "";
+                                    return node.tagName + (classText ? "." + classText : "") +
+                                        "{" + style.display + "," + style.visibility +
+                                        ",op=" + style.opacity + ",pe=" + style.pointerEvents +
+                                        ",area=" + Math.round(rect.width) + "x" + Math.round(rect.height) +
+                                        (node.hidden ? ",hidden" : "") + "}";
+                                } catch (e) {
+                                    return node.tagName + "{estado indisponível}";
+                                }
+                            }
+
+                            var state = visualState(element);
+                            var parent = element.parentElement;
+                            var parentDepth = 0;
+                            while (parent && parentDepth < 3) {
+                                state += " > " + visualState(parent);
+                                parent = parent.parentElement;
+                                parentDepth++;
+                            }
+                            return element.tagName + " texto=" + label +
+                                " link=" + (href || "(sem link)") + " estado=" + state;
                         }
 
                         say("iframe solicitado: " + frame.src);
@@ -449,8 +476,11 @@ class SuperflixFilmesProvider : MainAPI() {
                                 });
                                 observer.observe(doc.documentElement, {
                                     childList: true,
-                                    subtree: true
+                                    subtree: true,
+                                    attributes: true,
+                                    attributeFilter: ["class", "style", "hidden", "aria-hidden", "disabled"]
                                 });
+                                say("monitorando mudanças de visibilidade dos botões e servidores.");
                             } catch (error) {
                                 say("não foi possível observar o conteúdo interno: " +
                                     (error && error.name ? error.name : "erro"));
@@ -652,7 +682,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 }
             }
 
-            logDiagnostic("Diagnóstico SuperFlix v2.6 iniciado.")
+            logDiagnostic("Diagnóstico SuperFlix v2.7 iniciado.")
 
             fun closeFullscreen() {
                 val activeDialog = fullscreenDialog
