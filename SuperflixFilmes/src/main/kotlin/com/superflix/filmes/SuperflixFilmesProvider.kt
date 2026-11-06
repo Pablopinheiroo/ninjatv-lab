@@ -448,9 +448,11 @@ class SuperflixFilmesProvider : MainAPI() {
 
             fun logDiagnostic(message: String) {
                 val safeMessage = message
-                    .replace(Regex("(?i)(token|cookie|authorization)\\s*[:=]\\s*[^\\s,;]+"), "$1=[oculto]")
+                    .replace(Regex("(?i)(token|cookie|authorization)\\s*[:=]\\s*[^\\s,;]+")) { match ->
+                        "${match.groupValues[1]}=[oculto]"
+                    }
                     .take(260)
-                diagnosticText.append("• $safeMessage\\n")
+                diagnosticText.append("• $safeMessage\n")
                 val maxChars = 9000
                 if (diagnosticText.length() > maxChars) {
                     diagnosticText.text = diagnosticText.text.takeLast(7000)
