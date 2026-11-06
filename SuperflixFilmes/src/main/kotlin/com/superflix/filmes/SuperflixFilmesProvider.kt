@@ -20,6 +20,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ProgressBar
+import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.CommonActivity
@@ -408,6 +410,100 @@ class SuperflixFilmesProvider : MainAPI() {
             var fullscreenCallback: WebChromeClient.CustomViewCallback? = null
             val handler = Handler(Looper.getMainLooper())
 
+            // Painel temporário de diagnóstico. Mostra erros de JavaScript e
+            // códigos HTTP sem expor query strings, cookies ou tokens.
+            val diagnosticText = TextView(hostActivity).apply {
+                setTextColor(Color.WHITE)
+                textSize = 11f
+                setPadding(12, 10, 12, 10)
+                setBackgroundColor(0xD9000000.toInt())
+                isTextSelectable = true
+            }
+            val diagnosticScroll = ScrollView(hostActivity).apply {
+                addView(
+                    diagnosticText,
+                    ScrollView.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                )
+            }
+            val diagnosticHeight = (184 * hostActivity.resources.displayMetrics.density).toInt()
+            root.addView(
+                diagnosticScroll,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    diagnosticHeight,
+                    Gravity.BOTTOM
+                )
+            )
+
+            fun safeAddress(raw: String?): String {
+                if (raw.isNullOrBlank()) return "(endereço indisponível)"
+                val uri = runCatching { Uri.parse(raw) }.getOrNull()
+                    ?: return "(endereço inválido)"
+                val host = uri.host ?: return "(endereço sem domínio)"
+                return host + (uri.encodedPath ?: "/")
+            }
+
+            fun logDiagnostic(message: String) {
+                val safeMessage = message
+                    .replace(Regex("(?i)(token|cookie|authorization)\\s*[:=]\\s*[^\\s,;]+"), "$1=[oculto]")
+                    .take(260)
+                diagnosticText.append("• $safeMessage\\n")
+                val maxChars = 9000
+                if (diagnosticText.length() > maxChars) {
+                    diagnosticText.text = diagnosticText.text.takeLast(7000)
+                }
+                diagnosticScroll.post { diagnosticScroll.fullScroll(View.FOCUS_DOWN) }
+            }
+
+            fun diagnosticWebViewClient(
+                onFinished: (String?) -> Unit = {}
+            ): WebViewClient = object : WebViewClient() {
+                override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                    super.onPageStarted(view, url, favicon)
+                    logDiagnostic("Abrindo: ${safeAddress(url)}")
+                }
+
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    logDiagnostic("Página carregada: ${safeAddress(url)}")
+                    onFinished(url)
+                }
+
+                override fun onReceivedHttpError(
+                    view: WebView?,
+                    request: android.webkit.WebResourceRequest?,
+                    errorResponse: android.webkit.WebResourceResponse?
+                ) {
+                    super.onReceivedHttpError(view, request, errorResponse)
+                    val status = errorResponse?.statusCode ?: return
+                    if (status >= 400 && request != null) {
+                        logDiagnostic(
+                            "HTTP $status ${request.method} ${safeAddress(request.url.toString())}"
+                        )
+                    }
+                }
+
+                override fun onReceivedError(
+                    view: WebView?,
+                    request: android.webkit.WebResourceRequest?,
+                    error: android.webkit.WebResourceError?
+                ) {
+                    super.onReceivedError(view, request, error)
+                    if (request != null && error != null &&
+                        (request.isForMainFrame || error.errorCode != -2)
+                    ) {
+                        logDiagnostic(
+                            "ERRO WebView ${error.errorCode}: ${error.description} — ${safeAddress(request.url.toString())}"
+                        )
+                    }
+                }
+            }
+
+            logDiagnostic("Diagnóstico SuperFlix v2.3 iniciado.")
+
             fun closeFullscreen() {
                 val activeDialog = fullscreenDialog
                 fullscreenDialog = null
@@ -453,10 +549,12 @@ class SuperflixFilmesProvider : MainAPI() {
                         .firstNotNullOfOrNull { validatedEmbedUrl(it) }
 
                     if (embedUrl != null) {
+                        logDiagnostic("Iframe localizado: ${safeAddress(embedUrl)}")
                         loadEmbed(embedUrl)
                     } else if (attempt < 14) {
                         handler.postDelayed({ scanForEmbed(attempt + 1) }, 650L)
                     } else {
+                        logDiagnostic("Iframe não localizado após 15 tentativas.")
                         progress.visibility = View.GONE
                         webView.visibility = View.VISIBLE
                         Toast.makeText(
@@ -484,20 +582,26 @@ class SuperflixFilmesProvider : MainAPI() {
 
             webView.setBackgroundColor(Color.BLACK)
             webView.visibility = View.INVISIBLE
-            webView.webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    super.onPageFinished(view, url)
-                    if (wrapperLoaded) {
-                        webView.visibility = View.VISIBLE
-                        progress.visibility = View.GONE
-                    } else if (!scanStarted) {
-                        scanStarted = true
-                        scanForEmbed(0)
-                    }
+            webView.webViewClient = diagnosticWebViewClient {
+                if (wrapperLoaded) {
+                    webView.visibility = View.VISIBLE
+                    progress.visibility = View.GONE
+                } else if (!scanStarted) {
+                    scanStarted = true
+                    logDiagnostic("Página de origem carregada; procurando o iframe.")
+                    scanForEmbed(0)
                 }
             }
 
             webView.webChromeClient = object : WebChromeClient() {
+                override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                    if (consoleMessage != null) {
+                        logDiagnostic(
+                            "JS ${consoleMessage.messageLevel()}: ${consoleMessage.message().take(220)} — ${safeAddress(consoleMessage.sourceId())}:${consoleMessage.lineNumber()}"
+                        )
+                    }
+                    return true
+                }
                 override fun onCreateWindow(
                     view: WebView?,
                     isDialog: Boolean,
@@ -505,6 +609,7 @@ class SuperflixFilmesProvider : MainAPI() {
                     resultMsg: android.os.Message?
                 ): Boolean {
                     if (!dialog.isShowing || resultMsg == null) return false
+                    logDiagnostic("O player solicitou uma nova janela (popup).")
 
                     // Abre pop-ups do próprio fluxo do player dentro do mesmo
                     // diálogo, em vez de deixar o toque sem resposta.
@@ -521,11 +626,8 @@ class SuperflixFilmesProvider : MainAPI() {
                     CookieManager.getInstance().setAcceptCookie(true)
                     CookieManager.getInstance().setAcceptThirdPartyCookies(popup, true)
                     popup.setBackgroundColor(Color.BLACK)
-                    popup.webViewClient = object : WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            super.onPageFinished(view, url)
-                            progress.visibility = View.GONE
-                        }
+                    popup.webViewClient = diagnosticWebViewClient {
+                        progress.visibility = View.GONE
                     }
                     popup.webChromeClient = this
                     root.addView(
@@ -643,6 +745,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 setBackgroundDrawable(ColorDrawable(Color.BLACK))
                 addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
             }
+            logDiagnostic("Abrindo página do filme: ${safeAddress(sourcePageUrl)}")
             webView.loadUrl(sourcePageUrl)
         }
 
