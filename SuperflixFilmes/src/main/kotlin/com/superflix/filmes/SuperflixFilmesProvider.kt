@@ -420,6 +420,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 setTextIsSelectable(true)
             }
             val diagnosticScroll = ScrollView(hostActivity).apply {
+                visibility = View.GONE
                 addView(
                     diagnosticText,
                     FrameLayout.LayoutParams(
@@ -428,7 +429,8 @@ class SuperflixFilmesProvider : MainAPI() {
                     )
                 )
             }
-            val diagnosticHeight = (184 * hostActivity.resources.displayMetrics.density).toInt()
+            val density = hostActivity.resources.displayMetrics.density
+            val diagnosticHeight = (184 * density).toInt()
             root.addView(
                 diagnosticScroll,
                 FrameLayout.LayoutParams(
@@ -436,6 +438,39 @@ class SuperflixFilmesProvider : MainAPI() {
                     diagnosticHeight,
                     Gravity.BOTTOM
                 )
+            )
+            // O painel começa recolhido para não cobrir os botões do player.
+            val diagnosticToggle = TextView(hostActivity).apply {
+                text = "LOG"
+                setTextColor(Color.WHITE)
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setPadding(14, 10, 14, 10)
+                setBackgroundColor(0xDD202020.toInt())
+                elevation = 8f * density
+                isClickable = true
+                isFocusable = false
+                setOnClickListener {
+                    val showing = diagnosticScroll.visibility != View.VISIBLE
+                    diagnosticScroll.visibility = if (showing) View.VISIBLE else View.GONE
+                    text = if (showing) "FECHAR LOG" else "LOG"
+                    if (showing) {
+                        diagnosticScroll.bringToFront()
+                        diagnosticScroll.post { diagnosticScroll.fullScroll(View.FOCUS_DOWN) }
+                        bringToFront()
+                    }
+                }
+            }
+            root.addView(
+                diagnosticToggle,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    (42 * density).toInt(),
+                    Gravity.TOP or Gravity.END
+                ).apply {
+                    topMargin = (10 * density).toInt()
+                    rightMargin = (10 * density).toInt()
+                }
             )
 
             fun safeAddress(raw: String?): String {
@@ -457,12 +492,26 @@ class SuperflixFilmesProvider : MainAPI() {
                 if (diagnosticText.length() > maxChars) {
                     diagnosticText.setText(diagnosticText.text.takeLast(7000))
                 }
-                diagnosticScroll.post { diagnosticScroll.fullScroll(View.FOCUS_DOWN) }
+                if (diagnosticScroll.visibility == View.VISIBLE) {
+                    diagnosticScroll.post { diagnosticScroll.fullScroll(View.FOCUS_DOWN) }
+                }
             }
 
             fun diagnosticWebViewClient(
                 onFinished: (String?) -> Unit = {}
             ): WebViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(
+                    view: WebView?,
+                    request: android.webkit.WebResourceRequest?
+                ): Boolean {
+                    if (request != null) {
+                        logDiagnostic(
+                            "Navegação solicitada: ${request.method} ${safeAddress(request.url.toString())}"
+                        )
+                    }
+                    return false
+                }
+
                 override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
                     logDiagnostic("Abrindo: ${safeAddress(url)}")
@@ -591,6 +640,12 @@ class SuperflixFilmesProvider : MainAPI() {
                 progress.visibility = View.GONE
                 logDiagnostic("Página HTML de incorporação carregada; o iframe do player está sendo exibido.")
             }
+            webView.setOnTouchListener { _, event ->
+                if (event.actionMasked == android.view.MotionEvent.ACTION_UP) {
+                    logDiagnostic("Toque recebido pela WebView.")
+                }
+                false
+            }
 
             webView.webChromeClient = object : WebChromeClient() {
                 override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
@@ -638,6 +693,10 @@ class SuperflixFilmesProvider : MainAPI() {
                     )
                     popup.bringToFront()
                     progress.bringToFront()
+                    if (diagnosticScroll.visibility == View.VISIBLE) {
+                        diagnosticScroll.bringToFront()
+                    }
+                    diagnosticToggle.bringToFront()
                     popupViews.add(popup)
 
                     val transport = resultMsg.obj as? WebView.WebViewTransport
