@@ -1,7 +1,7 @@
-version = 21
+version = 22
 
 cloudstream {
-    description = "v2.1 — Catálogo SuperFlix com reprodução do iframe oficial dentro do NinjaTV."
+    description = "v2.2 — Validação de domínios atuais e origem correta do iframe SuperFlix."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("Movie")
