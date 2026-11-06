@@ -1,7 +1,7 @@
-version = 31
+version = 32
 
 cloudstream {
-    description = "v3.1 — Compatibilidade WebView e diagnóstico ampliado do Cloudflare."
+    description = "v3.2 — Diagnóstico seguro de eventos e estado da reprodução."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("Movie")
