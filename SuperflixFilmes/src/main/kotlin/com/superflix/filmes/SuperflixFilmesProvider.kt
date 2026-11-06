@@ -30,6 +30,7 @@ import org.json.JSONArray
 import org.json.JSONTokener
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import java.io.ByteArrayInputStream
 import java.net.URLEncoder
 
 /**
@@ -58,6 +59,75 @@ class SuperflixFilmesProvider : MainAPI() {
             "superflixapi.baby",
             "superflixapi.pro"
         )
+
+        // Recursos de publicidade/telemetria observados nos testes.
+        // O domínio do player e o Cloudflare Turnstile NÃO entram nesta lista.
+        private val blockedAdResourceHosts = setOf(
+            "cvt-s2.agl004.fun",
+            "whos.amung.us",
+            "ad.turn.com",
+            "sync.srv.stackadapt.com",
+            "match.adsrvr.org",
+            "sync.ipredictive.com",
+            "match.sharethrough.com",
+            "sync.inmobi.com",
+            "ssbsync.smartadserver.com",
+            "bh.contextweb.com",
+            "usync.ingage.tech",
+            "c1.adform.net",
+            "ih.adscale.de",
+            "ads.pubmatic.com",
+            "sync.ottadvisors.com",
+            "cs-server-s2s.yellowblue.io",
+            "rtb.gumgum.com",
+            "sync.1rx.io",
+            "ssum.casalemedia.com",
+            "sync.go.sonobi.com",
+            "csync.loopme.me",
+            "pixel-sync.sitescout.com",
+            "s.ad.smaato.net",
+            "ssp-sync.criteo.com",
+            "x.bidswitch.net",
+            "eb2.3lift.com",
+            "secure.adnxs.com",
+            "sync.intentiq.com",
+            "cdn.id5-sync.com",
+            "jadserve.postrelease.com",
+            "us-u.openx.net",
+            "match.prod.bidr.io",
+            "cs.media.net",
+            "eus.rubiconproject.com",
+            "track.bidgx.com",
+            "cm.g.doubleclick.net",
+            "sync.pmbmonetize.live",
+            "servetraff.com"
+        )
+
+        private fun isBlockedAdResource(uri: Uri): Boolean {
+            val host = uri.host?.lowercase() ?: return false
+            val path = uri.encodedPath.orEmpty().lowercase()
+
+            if (host in blockedAdResourceHosts) return true
+            if (host == "capitalhospitals.org" && path.startsWith("/1/")) return true
+
+            // Bloqueia somente os pings/telemetria do JW Player, não o player nem seus vídeos.
+            if (host == "prd.jwpltx.com" &&
+                (path == "/v1/jwplayer6/ping.gif" || path == "/v1/clienta/ping.gif")
+            ) return true
+
+            // Links de campanha observados no relatório.
+            if (host == "s.shopee.com.br") return true
+            if (host == "asiafilm.org" && path.startsWith("/4/")) return true
+
+            return false
+        }
+
+        private fun isBlockedAdNavigation(uri: Uri): Boolean {
+            val host = uri.host?.lowercase() ?: return false
+            val path = uri.encodedPath.orEmpty().lowercase()
+            return host == "s.shopee.com.br" ||
+                (host == "asiafilm.org" && path.startsWith("/4/"))
+        }
 
         private val moviePathRegex = Regex(
             "^/filme/([^/]+)/?$",
@@ -690,12 +760,57 @@ class SuperflixFilmesProvider : MainAPI() {
                     view: WebView?,
                     request: android.webkit.WebResourceRequest?
                 ): Boolean {
-                    if (request != null) {
-                        logDiagnostic(
-                            "Navegação solicitada: ${request.method} ${safeAddress(request.url.toString())}"
-                        )
+                    val uri = request?.url ?: return false
+                    if (isBlockedAdNavigation(uri)) {
+                        logDiagnostic("Redirecionamento publicitário bloqueado: ${safeAddress(uri.toString())}")
+                        val activeView = view
+                        if (activeView != null && popupViews.contains(activeView)) {
+                            handler.post {
+                                if (popupViews.lastOrNull() === activeView) {
+                                    closeTopPopup()
+                                }
+                            }
+                        }
+                        return true
                     }
+
+                    // Mantém about:blank/srcdoc disponíveis para o funcionamento dos iframes.
+                    val scheme = uri.scheme?.lowercase()
+                    if (scheme != "http" && scheme != "https" && scheme != "about") {
+                        logDiagnostic("Navegação externa/esquema não suportado bloqueado.")
+                        val activeView = view
+                        if (activeView != null && popupViews.contains(activeView)) {
+                            handler.post {
+                                if (popupViews.lastOrNull() === activeView) closeTopPopup()
+                            }
+                        }
+                        return true
+                    }
+
+                    logDiagnostic(
+                        "Navegação permitida: ${request.method} ${safeAddress(uri.toString())}"
+                    )
                     return false
+                }
+
+                override fun shouldInterceptRequest(
+                    view: WebView?,
+                    request: android.webkit.WebResourceRequest?
+                ): android.webkit.WebResourceResponse? {
+                    val uri = request?.url ?: return null
+                    if (!isBlockedAdResource(uri)) return null
+
+                    handler.post {
+                        logDiagnostic("Recurso de anúncio/rastreamento bloqueado: ${safeAddress(uri.toString())}")
+                    }
+                    return android.webkit.WebResourceResponse(
+                        "text/plain",
+                        "UTF-8",
+                        204,
+                        "No Content",
+                        emptyMap(),
+                        ByteArrayInputStream(ByteArray(0))
+                    )
                 }
 
                 override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
@@ -739,7 +854,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 }
             }
 
-            logDiagnostic("Diagnóstico SuperFlix v2.8 iniciado.")
+            logDiagnostic("Diagnóstico SuperFlix v2.9 iniciado.")
 
             fun closeFullscreen() {
                 val activeDialog = fullscreenDialog
