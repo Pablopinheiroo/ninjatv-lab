@@ -70,6 +70,15 @@
   </section>
 
   <section class="card">
+    <h2>Diagnóstico do navegador</h2>
+    <p class="muted small">Verifica recursos gerais do navegador/WebView e erros de carregamento nesta página. Não lê valores de cookies, não coleta tokens e não envia os dados para outro serviço.</p>
+    <p id="diagnosticStatus" class="muted status">Diagnóstico ainda não executado.</p>
+    <button id="runDiagnostics">Executar diagnóstico local</button>
+    <button id="clearDiagnostics" class="secondary">Limpar registros locais</button>
+    <pre id="diagnosticOutput">O resultado do diagnóstico aparecerá aqui.</pre>
+  </section>
+
+  <section class="card">
     <h2>Diagnóstico</h2>
     <p class="muted small">A página recebe o token do widget oficial. O Worker envia o token ao Siteverify usando uma chave secreta de teste guardada nas configurações do servidor. A chave e o token não são devolvidos ao navegador nem registrados em logs.</p>
     <p class="muted small">A simulação 503 afeta somente uma rota local do laboratório. Ela não bloqueia Cloudflare Insights, Turnstile ou qualquer outro site.</p>
@@ -192,5 +201,6 @@
   checkHealth();
 })();
 </script>
-<script src="/diagnostics.js" defer></script>\n</body>
+<script src="/diagnostics.js" defer></script>
+</body>
 </html>
