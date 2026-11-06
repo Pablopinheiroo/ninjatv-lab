@@ -10,7 +10,7 @@ const SCENARIOS = {
   },
   fail_visible: {
     label: "Reprovação previsível (visível)",
-    sitekey: "2x00000000000000000000AB",
+    sitekey: "1x00000000000000000000AA",
     secretName: "TURNSTILE_SECRET_FAIL",
     expected: false,
     size: "normal"
@@ -24,7 +24,7 @@ const SCENARIOS = {
   },
   fail_invisible: {
     label: "Reprovação previsível (invisível)",
-    sitekey: "2x00000000000000000000BB",
+    sitekey: "1x00000000000000000000BB",
     secretName: "TURNSTILE_SECRET_FAIL",
     expected: false,
     size: "invisible"
