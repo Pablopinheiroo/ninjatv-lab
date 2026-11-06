@@ -1,7 +1,7 @@
-version = 23
+version = 24
 
 cloudstream {
-    description = "v2.3 — Diagnóstico interno de JavaScript, carregamento WebView e respostas HTTP."
+    description = "v2.4 — Abre diretamente a página do reprodutor SuperFlix dentro da WebView."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("Movie")
