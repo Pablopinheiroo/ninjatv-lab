@@ -1,7 +1,7 @@
-version = 28
+version = 29
 
 cloudstream {
-    description = "v2.8 — Iframe responsivo para celulares e TVs, com botão para retornar de janelas."
+    description = "v2.9 — Bloqueio de redirecionamentos publicitários e rastreadores observados."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("Movie")
