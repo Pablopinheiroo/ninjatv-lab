@@ -92,7 +92,7 @@
     const config = window.NINJA_SCENARIOS[selector.value];
     widgetStatus.textContent = "Renderizando: " + config.label;
     try {
-      widgetId = window.turnstile.render(widgetNode, {
+      widgetId = window.turnstile.render("#widget", {
         sitekey: config.sitekey,
         callback: (value) => {
           token = value;
