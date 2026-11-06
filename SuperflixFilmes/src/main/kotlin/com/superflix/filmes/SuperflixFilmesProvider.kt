@@ -47,6 +47,16 @@ class SuperflixFilmesProvider : MainAPI() {
         const val BASE_URL = "https://superflixapi.boats"
         private const val DOCUMENTED_TEST_ID = "tt0068646"
 
+        // Domínios oficiais/aliases conhecidos do SuperFlix. O domínio da
+        // página pode redirecionar, enquanto o iframe já usa o domínio atual.
+        private val allowedPlayerHosts = setOf(
+            "superflixapi.boats",
+            "superflixapi.monster",
+            "superflixapi.fun",
+            "superflixapi.baby",
+            "superflixapi.pro"
+        )
+
         private val moviePathRegex = Regex(
             "^/filme/([^/]+)/?$",
             RegexOption.IGNORE_CASE
@@ -119,10 +129,15 @@ class SuperflixFilmesProvider : MainAPI() {
     private fun validatedEmbedUrl(raw: String?): String? {
         val candidate = absoluteUrl(raw) ?: return null
         val uri = runCatching { Uri.parse(candidate) }.getOrNull() ?: return null
-        val expectedHost = Uri.parse(mainUrl).host
+        val knownHost = uri.host
+            ?.lowercase()
+            ?.let { it in allowedPlayerHosts }
+            ?: false
 
+        // Mantém HTTPS e o caminho esperado do player. Aceita os aliases
+        // conhecidos porque o iframe pode usar domínio diferente da página.
         if (uri.scheme != "https" ||
-            !uri.host.equals(expectedHost, ignoreCase = true) ||
+            !knownHost ||
             moviePathRegex.matchEntire(uri.path.orEmpty()) == null
         ) {
             return null
@@ -419,8 +434,10 @@ class SuperflixFilmesProvider : MainAPI() {
             fun loadEmbed(embedUrl: String) {
                 if (wrapperLoaded || !dialog.isShowing) return
                 wrapperLoaded = true
+                val embedUri = Uri.parse(embedUrl)
+                val embedBaseUrl = "${embedUri.scheme}://${embedUri.authority}/"
                 webView.loadDataWithBaseURL(
-                    "$mainUrl/",
+                    embedBaseUrl,
                     iframeHtml(embedUrl),
                     "text/html",
                     "UTF-8",
