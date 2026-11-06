@@ -844,8 +844,11 @@ class SuperflixFilmesProvider : MainAPI() {
                     error: android.webkit.WebResourceError?
                 ) {
                     super.onReceivedError(view, request, error)
+                    val failedHost = request?.url?.host.orEmpty().lowercase()
+                    val isCloudflareResource = failedHost == "challenges.cloudflare.com" ||
+                        failedHost.endsWith(".challenges.cloudflare.com")
                     if (request != null && error != null &&
-                        (request.isForMainFrame || error.errorCode != -2)
+                        (request.isForMainFrame || isCloudflareResource || error.errorCode != -2)
                     ) {
                         logDiagnostic(
                             "ERRO WebView ${error.errorCode}: ${error.description} — ${safeAddress(request.url.toString())}"
@@ -854,7 +857,7 @@ class SuperflixFilmesProvider : MainAPI() {
                 }
             }
 
-            logDiagnostic("Diagnóstico SuperFlix v2.9 iniciado.")
+            logDiagnostic("Diagnóstico SuperFlix v3.0 iniciado.")
 
             fun closeFullscreen() {
                 val activeDialog = fullscreenDialog
@@ -918,9 +921,17 @@ class SuperflixFilmesProvider : MainAPI() {
                 }
             }
 
+            val activeWebViewPackage = WebView.getCurrentWebViewPackage()
+            logDiagnostic(
+                "WebView ativo: ${activeWebViewPackage?.packageName ?: "não identificado"} " +
+                    "versão ${activeWebViewPackage?.versionName ?: "desconhecida"}"
+            )
+
             webView.settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
+                allowFileAccess = true
+                allowContentAccess = true
                 javaScriptCanOpenWindowsAutomatically = true
                 // Alguns botões de idioma do player abrem o parceiro em uma
                 // nova janela. Sem suporte a múltiplas janelas, o toque não faz nada.
@@ -930,10 +941,14 @@ class SuperflixFilmesProvider : MainAPI() {
                 useWideViewPort = true
                 loadWithOverviewMode = false
                 textZoom = 100
-                mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             }
-            CookieManager.getInstance().setAcceptCookie(true)
-            CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
+            CookieManager.getInstance().apply {
+                setAcceptCookie(true)
+                setAcceptThirdPartyCookies(webView, true)
+                flush()
+            }
+            logDiagnostic("JavaScript=${webView.settings.javaScriptEnabled}; DOMStorage=${webView.settings.domStorageEnabled}; UA=${webView.settings.userAgentString}")
 
             webView.setBackgroundColor(Color.BLACK)
             webView.visibility = View.INVISIBLE
@@ -982,7 +997,7 @@ class SuperflixFilmesProvider : MainAPI() {
                         useWideViewPort = true
                         loadWithOverviewMode = false
                         textZoom = 100
-                        mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                        mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
                     }
                     CookieManager.getInstance().setAcceptCookie(true)
                     CookieManager.getInstance().setAcceptThirdPartyCookies(popup, true)
