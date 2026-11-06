@@ -1,7 +1,7 @@
-version = 22
+version = 23
 
 cloudstream {
-    description = "v2.2 — Validação de domínios atuais e origem correta do iframe SuperFlix."
+    description = "v2.3 — Diagnóstico interno de JavaScript, carregamento WebView e respostas HTTP."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("Movie")
