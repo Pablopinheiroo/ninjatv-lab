@@ -589,7 +589,7 @@ class SuperflixFilmesProvider : MainAPI() {
             webView.webViewClient = diagnosticWebViewClient {
                 webView.visibility = View.VISIBLE
                 progress.visibility = View.GONE
-                logDiagnostic("Página original do player exibida diretamente; busca por iframe interno desativada.")
+                logDiagnostic("Página HTML de incorporação carregada; o iframe do player está sendo exibido.")
             }
 
             webView.webChromeClient = object : WebChromeClient() {
@@ -744,8 +744,8 @@ class SuperflixFilmesProvider : MainAPI() {
                 setBackgroundDrawable(ColorDrawable(Color.BLACK))
                 addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
             }
-            logDiagnostic("Abrindo página do filme: ${safeAddress(sourcePageUrl)}")
-            webView.loadUrl(sourcePageUrl)
+            logDiagnostic("Carregando o mesmo formato do t.html: iframe src=${safeAddress(sourcePageUrl)}")
+            loadEmbed(sourcePageUrl)
         }
 
         return true
