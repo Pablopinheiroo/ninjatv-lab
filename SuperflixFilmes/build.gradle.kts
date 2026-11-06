@@ -1,7 +1,7 @@
-version = 27
+version = 28
 
 cloudstream {
-    description = "v2.7 — Diagnóstico da visibilidade e estado dos botões de servidor."
+    description = "v2.8 — Iframe responsivo para celulares e TVs, com botão para retornar de janelas."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("Movie")
