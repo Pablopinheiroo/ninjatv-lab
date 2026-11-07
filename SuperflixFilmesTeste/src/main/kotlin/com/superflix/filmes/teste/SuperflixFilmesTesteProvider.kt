@@ -49,6 +49,7 @@ class SuperflixFilmesTesteProvider : MainAPI() {
 
     companion object {
         const val BASE_URL = "https://superflixapi.monster"
+        private const val RATE_LIMIT_COOLDOWN_MS = 20_000L
 
         // Domínios oficiais/aliases conhecidos do SuperFlix. O domínio da
         // página pode redirecionar, enquanto o iframe já usa o domínio atual.
@@ -233,10 +234,6 @@ class SuperflixFilmesTesteProvider : MainAPI() {
     private var cachedCatalog: List<CatalogEntry>? = null
     private var cachedCatalogAt: Long = 0L
     private var cachedCatalogRetryAfter: Long = 0L
-
-    private companion object RateLimitPolicy {
-        const val RATE_LIMIT_COOLDOWN_MS = 20_000L
-    }
 
     private fun parseCatalogJson(raw: String?): List<CatalogEntry> {
         if (raw.isNullOrBlank()) return emptyList()
