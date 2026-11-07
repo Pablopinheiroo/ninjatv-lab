@@ -4,7 +4,7 @@
   const output = document.getElementById("diagnosticOutput");
   const status = document.getElementById("diagnosticStatus");
   const events = [];
-  const maxEvents = 80;
+  const maxEvents = 100;
 
   function safeUrl(value) {
     try {
@@ -38,6 +38,15 @@
     } catch (error) {
       return "erro: " + String(error.name || "erro");
     }
+  }
+
+  function recentResources() {
+    return performance.getEntriesByType("resource").slice(-100).map(item => ({
+      resource: safeUrl(item.name),
+      type: item.initiatorType,
+      duration_ms: Math.round(item.duration),
+      transfer_bytes: Number.isFinite(item.transferSize) ? item.transferSize : null
+    }));
   }
 
   window.addEventListener("error", event => {
@@ -77,6 +86,26 @@
     }
   });
 
+  window.addEventListener("ninja-turnstile-success", () => {
+    record("turnstile-callback-success", { tokenValueCaptured: false });
+  });
+
+  window.addEventListener("ninja-turnstile-error", event => {
+    record("turnstile-callback-error", {
+      code: String(event.detail?.code || "sem código").slice(0, 80)
+    });
+  });
+
+  window.addEventListener("ninja-turnstile-expired", () => {
+    record("turnstile-callback-expired", {});
+  });
+
+  window.addEventListener("online", () => record("network-online", {}));
+  window.addEventListener("offline", () => record("network-offline", {}));
+  document.addEventListener("visibilitychange", () => {
+    record("visibility-change", { state: document.visibilityState });
+  });
+
   function snapshot() {
     const frames = [...document.querySelectorAll("iframe")].map(frame => ({
       origin: safeUrl(frame.src)?.origin || "about:blank",
@@ -84,14 +113,23 @@
       visible: Boolean(frame.getClientRects().length)
     }));
 
-    const resources = performance.getEntriesByType("resource").slice(-80).map(item => ({
-      resource: safeUrl(item.name),
-      type: item.initiatorType,
-      duration_ms: Math.round(item.duration)
-    }));
+    const resources = recentResources();
+    const cloudflareResources = resources.filter(item =>
+      item.resource?.origin?.includes("cloudflare.com")
+    );
 
     const text = (document.body?.innerText || "").toLowerCase();
     const ua = navigator.userAgent || "";
+    const chromeMatch = ua.match(/Chrome\/([\d.]+)/i);
+    const androidMatch = ua.match(/Android\s+([\d.]+)/i);
+    const webViewHint = /;\s*wv\)/i.test(ua) ||
+      (/Android/i.test(ua) && /Version\/[\d.]+.*Chrome\/[\d.]+.*Mobile Safari/i.test(ua));
+
+    const turnstileScript = [...document.querySelectorAll("script[src]")]
+      .map(script => safeUrl(script.src))
+      .find(resource => resource?.origin?.includes("challenges.cloudflare.com") &&
+        resource.path.includes("/turnstile/"));
+
     const features = {
       javascript: "ativo",
       localStorage: testStorage("localStorage"),
@@ -99,6 +137,7 @@
       indexedDB: testIndexedDB(),
       cookiesEnabled: navigator.cookieEnabled === true,
       cryptoSubtle: Boolean(window.crypto && window.crypto.subtle),
+      secureContext: window.isSecureContext === true,
       messageChannel: typeof MessageChannel === "function",
       broadcastChannel: typeof BroadcastChannel === "function",
       postMessage: typeof window.postMessage === "function",
@@ -109,23 +148,40 @@
 
     return {
       capturedAt: new Date().toISOString(),
-      page: { origin: location.origin, path: location.pathname },
+      page: {
+        origin: location.origin,
+        path: location.pathname,
+        visibility: document.visibilityState
+      },
       browser: {
         userAgent: ua,
+        chromeVersion: chromeMatch?.[1] || null,
+        androidVersion: androidMatch?.[1] || null,
         language: navigator.language || null,
         platform: navigator.platform || null,
         online: navigator.onLine,
         cookieEnabled: navigator.cookieEnabled,
         viewport: { width: innerWidth, height: innerHeight },
-        webViewHint: ua.includes("; wv)")
+        androidWebViewHint: webViewHint
+      },
+      nativeWebViewSettings: {
+        webViewPackageVersion: "não acessível pelo JavaScript da página",
+        thirdPartyCookieSetting: "não acessível pelo JavaScript da página",
+        note: "Esses dados exigem diagnóstico nativo no aplicativo Android."
       },
       features,
-      hints: {
-        turnstileScriptRequested: Boolean(document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]')),
-        turnstileApiAvailable: Boolean(window.turnstile && typeof window.turnstile.render === "function"),
-        turnstileFramePresent: frames.some(frame => frame.origin.includes("challenges.cloudflare.com")),
-        cloudflareChallengeText: /checking your browser|verify you are human|just a moment|attention required/.test(text),
-        iframeCount: frames.length
+      turnstile: {
+        apiAvailable: Boolean(window.turnstile &&
+          typeof window.turnstile.render === "function"),
+        scriptElementPresent: Boolean(turnstileScript),
+        script: turnstileScript || null,
+        framePresent: frames.some(frame =>
+          frame.origin.includes("challenges.cloudflare.com")
+        ),
+        cloudflareResourceCount: cloudflareResources.length,
+        cloudflareResources,
+        challengeTextDetected:
+          /checking your browser|verify you are human|just a moment|attention required/.test(text)
       },
       frames,
       recentResources: resources,
@@ -155,7 +211,8 @@
     const data = snapshot();
     data.workerHealth = health;
     output.textContent = JSON.stringify(data, null, 2);
-    status.textContent = "Diagnóstico pronto. Dados mantidos somente nesta página.";
+    status.textContent =
+      "Diagnóstico pronto. Dados locais; nenhum cookie ou token foi coletado.";
   });
 
   document.getElementById("clearDiagnostics")?.addEventListener("click", () => {
