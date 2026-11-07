@@ -48,7 +48,7 @@ Este é um projeto independente, sem afiliação, patrocínio ou endosso oficial
 
 ## Compilação
 
-O GitHub Actions executa a compilação quando há alterações na branch `master` ou `main`. O processo prepara o Java e o Android SDK, compila os módulos e publica os arquivos gerados na branch `builds`.
+O GitHub Actions executa a compilação quando há alterações na branch `master` ou `main`. O processo prepara o Java e o Android SDK, compila os módulos e publica os arquivos gerados na branch `builds`. Também é possível iniciar manualmente em **Actions → Build → Run workflow**, escolhendo a branch `master`.
 
 Para uma compilação local em Linux ou macOS:
 
