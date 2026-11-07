@@ -232,6 +232,11 @@ class SuperflixFilmesTesteProvider : MainAPI() {
 
     private var cachedCatalog: List<CatalogEntry>? = null
     private var cachedCatalogAt: Long = 0L
+    private var cachedCatalogRetryAfter: Long = 0L
+
+    private companion object RateLimitPolicy {
+        const val RATE_LIMIT_COOLDOWN_MS = 20_000L
+    }
 
     private fun parseCatalogJson(raw: String?): List<CatalogEntry> {
         if (raw.isNullOrBlank()) return emptyList()
@@ -431,6 +436,13 @@ class SuperflixFilmesTesteProvider : MainAPI() {
         if (cached != null && now - cachedCatalogAt < 5 * 60 * 1000L) {
             return cached
         }
+        if (now < cachedCatalogRetryAfter) {
+            val waitSeconds = ((cachedCatalogRetryAfter - now) / 1000L).coerceAtLeast(1L)
+            throw ErrorLoadingException(
+                "A API SuperFlix pediu uma pausa. Aguarde aproximadamente " +
+                    waitSeconds + " segundos antes de tentar novamente."
+            )
+        }
 
         val url = BASE_URL + "/lista?category=filme&type=tmdb&format=json&order=desc"
         val raw = try {
@@ -440,13 +452,51 @@ class SuperflixFilmesTesteProvider : MainAPI() {
                 headers = mapOf("Accept" to "application/json")
             ).text
         } catch (error: Exception) {
-            throw ErrorLoadingException(
-                "Não foi possível consultar a API pública de filmes: " +
-                    (error.message ?: error.javaClass.simpleName)
-            )
+            val detail = error.message ?: error.javaClass.simpleName
+            if (detail.contains("429") ||
+                detail.contains("too many", ignoreCase = true) ||
+                detail.contains("rate limit", ignoreCase = true)
+            ) {
+                cachedCatalogRetryAfter = System.currentTimeMillis() + RATE_LIMIT_COOLDOWN_MS
+                throw ErrorLoadingException(
+                    "A API SuperFlix limitou temporariamente as consultas. " +
+                        "Aguarde alguns segundos antes de atualizar o catálogo."
+                )
+            }
+            throw ErrorLoadingException("Não foi possível consultar a API pública de filmes: " + detail)
         }
 
         val trimmed = raw.trimStart()
+
+        // A API pode responder HTTP 200 com um JSON de erro. Reconheça isso
+        // antes de procurar IDs para não apresentar limite de requisições
+        // como se fosse uma falha na estrutura do catálogo.
+        val apiError = runCatching {
+            val json = JSONObject(trimmed)
+            val isError = json.optBoolean("error", false) ||
+                json.optString("status").equals("error", ignoreCase = true)
+            if (isError) {
+                json.optString("message").takeIf { it.isNotBlank() && it != "null" }
+            } else {
+                null
+            }
+        }.getOrNull()
+
+        if (apiError != null) {
+            val isRateLimit = apiError.contains("muitas requisições", ignoreCase = true) ||
+                apiError.contains("too many", ignoreCase = true) ||
+                apiError.contains("rate limit", ignoreCase = true)
+
+            if (isRateLimit) {
+                cachedCatalogRetryAfter = System.currentTimeMillis() + RATE_LIMIT_COOLDOWN_MS
+                throw ErrorLoadingException(
+                    "A API SuperFlix limitou temporariamente as consultas: " + apiError +
+                        " Aguarde alguns segundos antes de atualizar. Nenhuma nova tentativa automática foi feita."
+                )
+            }
+
+            throw ErrorLoadingException("A API SuperFlix retornou um erro: " + apiError)
+        }
         if (trimmed.startsWith("<!doctype", ignoreCase = true) ||
             trimmed.startsWith("<html", ignoreCase = true) ||
             trimmed.contains("cf-chl-", ignoreCase = true) ||
