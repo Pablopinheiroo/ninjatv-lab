@@ -3,6 +3,8 @@ package com.superflix.common
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLinkType
+import com.lagradost.cloudstream3.utils.Qualities
 import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
@@ -394,6 +396,6 @@ abstract class SuperflixCatalogProvider(
         private const val API_BASE = "https://superflixapi.boats"
         private const val TMDB_WEB = "https://www.themoviedb.org"
         private const val PLAYER_TEMPLATE =
-            "https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/lab/turnstile-workers/shared/superflix-player.html"
+            "https://raw.githack.com/Pablopinheiroo/ninjatv-lab/lab/turnstile-workers/shared/superflix-player.html"
     }
 }

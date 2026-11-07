@@ -23,11 +23,11 @@ Os quatro plugins usam o mesmo arquivo HTML:
 
 `shared/superflix-player.html`
 
-O botão **Reproduzir** envia o tipo de mídia e o ID TMDB para esse arquivo. Filmes usam `type=filme`; séries, animes e doramas usam `type=serie`. O player de séries mantém a navegação de temporadas e episódios da própria página SuperFlix.
+O botão **Reproduzir** envia o tipo de mídia e o ID TMDB para esse arquivo. O link de execução usa raw.githack para servir o HTML com tipo MIME correto; o código-fonte continua hospedado no GitHub. Filmes usam `type=filme`; séries, animes e doramas usam `type=serie`. O player de séries mantém a navegação de temporadas e episódios da própria página SuperFlix.
 
 RAW do player:
 
-`https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/lab/turnstile-workers/shared/superflix-player.html`
+`https://raw.githack.com/Pablopinheiroo/ninjatv-lab/lab/turnstile-workers/shared/superflix-player.html`
 
 **Compatibilidade:** a extensão entrega o endereço HTML como link para o aplicativo. A abertura da página e a reprodução incorporada dependem de o NinjaTV tratar esse tipo de link em WebView. A compilação do plugin, por si só, não comprova a reprodução no aparelho; isso precisa ser testado dentro do NinjaTV.
 
