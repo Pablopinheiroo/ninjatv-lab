@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -41,7 +41,35 @@ jobs:
           find . -type f -name "*.cs3" -print
           test "$(find . -type f -name "*.cs3" | wc -l)" -ge 4
 
-      - name: Upload lab artifacts (does not publish to builds)
+      - name: Publish repository link on isolated lab-builds branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ../lab-publish
+          cp */build/*.cs3 ../lab-publish/
+          cp build/plugins.json ../lab-publish/plugins.json
+          sed -i 's|/builds/|/lab-builds/|g' ../lab-publish/plugins.json
+          cat > ../lab-publish/repo.json <<'EOF'
+          {
+            "name": "NinjaTV Lab — Catálogos",
+            "description": "Catálogos de filmes, séries, animes e doramas. Metadados e capas; sem reprodução.",
+            "manifestVersion": 1,
+            "pluginLists": [
+              "https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/lab-builds/plugins.json"
+            ]
+          }
+          EOF
+          cd ../lab-publish
+          git init
+          git checkout -b lab-builds
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Publish isolated NinjaTV lab catalog packages"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/Pablopinheiroo/ninjatv-lab.git"
+          git push --force origin HEAD:lab-builds
+
+      - name: Upload lab artifacts (backup)
         uses: actions/upload-artifact@v4
         with:
           name: ninjatv-lab-cs3
