@@ -12,7 +12,7 @@ import java.net.URLEncoder
  * Somente metadados; não oferece fontes de vídeo.
  */
 class DoramasSuperflixProvider : MainAPI() {
-    override var mainUrl = "https://api.tvmaze.com"
+    override var mainUrl = "https://www.tvmaze.com"
     override var name = "Doramas Superflix"
     override var lang = "pt-BR"
     override val hasMainPage = true
@@ -48,7 +48,7 @@ class DoramasSuperflixProvider : MainAPI() {
     private fun isDorama(show: JSONObject): Boolean {
         val code = countryCode(show)
         val language = show.optString("language")
-        return (code != null && code in asianCountries) ||
+        return code in asianCountries ||
             language.equals("Korean", true) ||
             language.equals("Japanese", true) ||
             language.equals("Chinese", true)
