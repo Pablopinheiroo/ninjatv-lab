@@ -1,79 +1,59 @@
 # NinjaTV Lab
 
-> Projeto independente para fins educacionais, estudo e testes de desenvolvimento de extensões.
+Projeto independente para estudo e testes de desenvolvimento de extensões baseadas no ecossistema Cloudstream.
 
-O repositório estuda a estrutura de plugins baseada no ecossistema Cloudstream, a linguagem Kotlin, o Gradle e a publicação de extensões por GitHub Actions.
+## Catálogos especializados
 
-## Provider Donflix
+A branch `lab/turnstile-workers` contém quatro catálogos independentes, identificados com os nomes solicitados:
 
-O módulo `Donflix` é uma implementação experimental de catálogo. Ele consulta páginas públicas e organiza:
+| Extensão | Fonte de metadados | Conteúdo |
+|---|---|---|
+| Filmes Superflix | Cinemeta | Filmes, capas, sinopses, gêneros, ano e pesquisa |
+| Séries Superflix | Cinemeta | Séries, capas, sinopses, gêneros, ano e pesquisa |
+| Animes Superflix | Jikan API | Animes, capas, sinopses, gêneros, ano e pesquisa |
+| Doramas Superflix | TVmaze | Doramas asiáticos, capas, sinopses, gêneros, ano e pesquisa |
 
-- Filmes, séries e animes.
-- Categorias disponíveis no site.
-- Pesquisa por título.
-- Páginas de detalhes, metadados e episódios identificados no HTML público.
+**Importante:** os nomes das extensões são rótulos escolhidos para o projeto. Elas não são oficiais nem afiliadas ao site Superflix. Os dados de catálogo vêm das APIs indicadas acima; não são copiados do catálogo Superflix.
 
-**Estado atual:** o módulo não utiliza WebView. A integração com o player nativo ainda não está concluída; o provider não entrega fontes de vídeo ao player do aplicativo nesta versão.
+## Limites de reprodução
 
-## Provider Superflix Filmes (teste experimental)
+Estes quatro módulos são catálogos de metadados. Eles não extraem URLs de vídeo, não carregam players de terceiros, não contornam Cloudflare/Turnstile e não fornecem reprodução. `loadLinks` retorna `false` intencionalmente. Para assistir a uma obra, use um serviço oficial/licenciado.
 
-O módulo `SuperflixFilmes` consulta o catálogo público de filmes e usa a rota de filme documentada pela SuperFlixAPI. A primeira entrada de teste usa o exemplo de IMDb `tt0068646` (O Poderoso Chefão) citado na documentação pública.
+O módulo antigo `SuperflixFilmes`, anteriormente descrito como teste experimental, foi convertido em catálogo de metadados Cinemeta. A implementação anterior de WebView/player foi retirada desta branch de laboratório. O módulo `Donflix` foi preservado sem alterações.
 
-**Reprodução:** a documentação pública da SuperFlixAPI fornece uma página de player incorporável por iframe, não uma URL direta de mídia. O módulo primeiro tenta entregar essa página a um extrator já registrado no NinjaTV; se nenhum extrator produzir um link de mídia, encaminha o usuário à página oficial no navegador do dispositivo. A reprodução nativa depende de existir um extrator compatível no aplicativo.
+## Fontes e atribuição
 
-## Finalidade e limites
+- **Cinemeta:** catálogo de metadados de filmes e séries. Documentação de integração: https://github.com/Stremio/stremio-addons/blob/master/docs/tutorial/using-cinemeta.md
+- **Jikan API:** API pública de dados de anime: https://jikan.moe/
+- **TVmaze:** API pública de séries e episódios: https://www.tvmaze.com/api. Os dados públicos são licenciados sob CC BY-SA e exigem atribuição e cumprimento da cláusula ShareAlike. Consulte os termos atuais do serviço.
 
-- O projeto é destinado ao aprendizado de programação, experimentação e testes de compatibilidade.
-- O repositório não hospeda nem redistribui arquivos audiovisuais.
-- A disponibilidade pública de uma página ou endereço não significa, por si só, autorização para reproduzir ou redistribuir seu conteúdo.
-- Não é objetivo do projeto contornar controles de acesso, restrições técnicas ou direitos autorais, nem extrair ou redistribuir transmissões de terceiros sem autorização.
+As capas e sinopses permanecem pertencentes aos respectivos titulares/fontes. A presença de metadados não concede licença de exibição ou distribuição audiovisual.
 
-## Aviso sobre direitos autorais (DMCA)
+## Diagnóstico Cloudflare
 
-Este projeto tem caráter educacional e demonstra conceitos de desenvolvimento de extensões que consultam serviços externos. O NinjaTV Lab não hospeda, armazena ou mantém cópias de filmes, séries, animes ou outros arquivos audiovisuais em sua infraestrutura.
+O projeto Turnstile Lab contém apenas cenários de teste oficiais e diagnóstico observacional. Os resultados dos testes com chaves de teste não demonstram que seja possível nem apropriado contornar verificações de sites de terceiros.
 
-As páginas, informações e eventuais mídias permanecem sob responsabilidade e hospedagem dos respectivos serviços de origem. O projeto não declara ser proprietário desses materiais, não concede licença sobre conteúdo de terceiros e não afirma que a disponibilidade pública de um endereço representa autorização para sua utilização.
+## Estrutura e publicação
 
-Se um titular de direitos autorais ou representante identificar neste repositório algum material ou referência que considere irregular, poderá entrar em contato por meio dos canais do projeto no GitHub, indicando a obra, a URL específica e a justificativa do pedido. A solicitação será analisada e, quando pertinente e dentro do controle do projeto, a referência ou integração correspondente poderá ser removida ou desativada.
+- `master`: código principal do repositório.
+- `builds`: artefatos publicados pelo fluxo de produção.
+- `lab/turnstile-workers`: experimentação e validação isolada.
 
-A remoção de uma referência deste repositório não remove o material do serviço externo que o hospeda. Este aviso descreve a finalidade e o procedimento do projeto; não substitui autorização dos titulares, não garante imunidade jurídica e não determina a legalidade de conteúdos de terceiros.
+As alterações desta entrega ficam exclusivamente na branch de laboratório. O fluxo de produção não foi executado e a branch `builds` não foi modificada.
 
-Este é um projeto independente, sem afiliação, patrocínio ou endosso oficial do NinjaTV ou dos mantenedores do Cloudstream.
+## Compilação local
 
-## Estrutura do repositório
-
-- `master`: código-fonte, configurações e manifesto do repositório.
-- `builds`: arquivos de plugins compilados (`.cs3`), catálogo `plugins.json` e manifesto `repo.json`.
-
-## Compilação
-
-O GitHub Actions executa a compilação quando há alterações na branch `master` ou `main`. O processo prepara o Java e o Android SDK, compila os módulos e publica os arquivos gerados na branch `builds`.
-
-Para uma compilação local em Linux ou macOS:
+Linux/macOS:
 
 ```bash
 chmod +x gradlew
 ./gradlew make makePluginsJson
 ```
 
-No Windows:
+Windows:
 
 ```powershell
-.\\gradlew.bat make makePluginsJson
+.\gradlew.bat make makePluginsJson
 ```
 
-## Manifesto do repositório
-
-O arquivo `repo.json` aponta para o catálogo publicado na branch `builds`:
-
-`https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/builds/repo.json`
-
-A compatibilidade desse manifesto deve ser testada no aplicativo de destino. O formato semelhante ao utilizado pelo Cloudstream não garante, por si só, compatibilidade integral com qualquer aplicativo derivado.
-
-## Créditos e atribuição
-
-A estrutura inicial deste projeto foi baseada no template público [recloudstream/TestPlugins](https://github.com/recloudstream/TestPlugins). Este repositório é uma cópia independente para estudo. Alterações aqui realizadas não modificam nem são enviadas automaticamente ao repositório original.
-
-## Licença do template original
-
-O README do template de origem declara que o conteúdo do template é disponibilizado em domínio público, sem condições de uso. Consulte também o repositório original e seus avisos para verificar a licença e a atribuição aplicáveis a cada componente.
+Este repositório usa a estrutura de plugins do Cloudstream como base. Compatibilidade integral com cada versão do NinjaTV precisa ser verificada no aplicativo de destino.
