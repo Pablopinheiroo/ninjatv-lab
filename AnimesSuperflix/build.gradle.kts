@@ -1,7 +1,7 @@
-version = 2
+version = 3
 
 cloudstream {
-    description = "Catálogo de animes via Kitsu, com gêneros, capas, sinopses e paginação; sem reprodução."
+    description = "Catálogo de animes da SuperFlixAPI por TMDB, gêneros, busca e player compartilhado em WebView."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("Anime")

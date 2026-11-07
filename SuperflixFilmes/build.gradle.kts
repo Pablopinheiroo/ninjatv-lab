@@ -1,7 +1,7 @@
-version = 34
+version = 35
 
 cloudstream {
-    description = "Catálogo de filmes com gêneros organizados, capas, sinopses e paginação Cinemeta (100 por página); sem reprodução."
+    description = "Catálogo de filmes da SuperFlixAPI por TMDB, gêneros, busca e player compartilhado em WebView."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("Movie")

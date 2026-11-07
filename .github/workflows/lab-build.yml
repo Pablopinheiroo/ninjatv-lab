@@ -52,7 +52,7 @@ jobs:
           cat > ../lab-publish/repo.json <<'EOF'
           {
             "name": "NinjaTV Lab — Catálogos",
-            "description": "Catálogos de filmes, séries, animes e doramas. Metadados e capas; sem reprodução.",
+            "description": "Catálogos SuperFlix de filmes, séries, animes e doramas com player HTML compartilhado; requer WebView.",
             "manifestVersion": 1,
             "pluginLists": [
               "https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/lab-builds/plugins.json"
