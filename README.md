@@ -15,6 +15,8 @@ Este repositório contém quatro módulos independentes para as categorias do Su
 
 As listas tentam primeiro o formato JSON da API. Quando a resposta não é JSON válido ou não contém itens reconhecíveis, a extensão usa a página HTML pública da mesma categoria como alternativa.
 
+O domínio base configurado é `https://superflixapi.monster`, conforme o domínio indicado pela documentação atual da API: `https://superflixapi.monster/doc`.
+
 A reprodução segue o padrão validado no filme de teste: a página oficial de incorporação é aberta em uma WebView dentro do NinjaTV. Para filmes, a rota é `/filme/{id}`. Para séries, animes e doramas, a API usa a rota unificada `/serie/{id}`; a reprodução de um episódio utiliza `/serie/{id}/{temporada}/{episódio}`.
 
 O módulo antigo Donflix permanece no histórico do código, mas está desativado e não é incluído no catálogo de plugins publicado.
