@@ -92,7 +92,7 @@ class SeriesSuperflixProvider : MainAPI() {
         val poster = clean(meta.optString("poster"))
         val plot = clean(meta.optString("description"))
         val year = yearFrom(meta.optString("releaseInfo"))
-        val tags = stringList(meta.optJSONArray("genre"))
+        val tags = stringList(meta.optJSONArray("genres"))
 
         return newTvSeriesLoadResponse(title, url, TvType.TvSeries, emptyList()) {
             this.posterUrl = poster
