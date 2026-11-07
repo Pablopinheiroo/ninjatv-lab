@@ -2,24 +2,22 @@
 
 > Projeto independente para fins educacionais, estudo e testes de desenvolvimento de extensões.
 
-O repositório estuda a estrutura de plugins baseada no ecossistema Cloudstream, a linguagem Kotlin, o Gradle e a publicação de extensões por GitHub Actions.
+Este repositório contém quatro módulos independentes para as categorias do SuperFlix. Cada extensão consulta sua própria categoria e usa a página de reprodução incorporada oferecida pelo serviço, sem tentar extrair ou armazenar arquivos de vídeo.
 
-## Provider Donflix
+## Extensões SuperFlix
 
-O módulo `Donflix` é uma implementação experimental de catálogo. Ele consulta páginas públicas e organiza:
+| Extensão | Categoria da API |
+| --- | --- |
+| Superflix Filmes | `filme` |
+| Superflix Séries | `serie` |
+| Superflix Animes | `anime` |
+| Superflix Doramas | `dorama` |
 
-- Filmes, séries e animes.
-- Categorias disponíveis no site.
-- Pesquisa por título.
-- Páginas de detalhes, metadados e episódios identificados no HTML público.
+As listas tentam primeiro o formato JSON da API. Quando a resposta não é JSON válido ou não contém itens reconhecíveis, a extensão usa a página HTML pública da mesma categoria como alternativa.
 
-**Estado atual:** o módulo não utiliza WebView. A integração com o player nativo ainda não está concluída; o provider não entrega fontes de vídeo ao player do aplicativo nesta versão.
+A reprodução segue o padrão validado no filme de teste: a página oficial de incorporação é aberta em uma WebView dentro do NinjaTV. Para filmes, a rota é `/filme/{id}`. Para séries, animes e doramas, a API usa a rota unificada `/serie/{id}`; a reprodução de um episódio utiliza `/serie/{id}/{temporada}/{episódio}`.
 
-## Provider Superflix Filmes (teste experimental)
-
-O módulo `SuperflixFilmes` consulta o catálogo público de filmes e usa a rota de filme documentada pela SuperFlixAPI. A primeira entrada de teste usa o exemplo de IMDb `tt0068646` (O Poderoso Chefão) citado na documentação pública.
-
-**Reprodução:** a documentação pública da SuperFlixAPI fornece uma página de player incorporável por iframe, não uma URL direta de mídia. O módulo primeiro tenta entregar essa página a um extrator já registrado no NinjaTV; se nenhum extrator produzir um link de mídia, encaminha o usuário à página oficial no navegador do dispositivo. A reprodução nativa depende de existir um extrator compatível no aplicativo.
+O módulo antigo Donflix permanece no histórico do código, mas está desativado e não é incluído no catálogo de plugins publicado.
 
 ## Finalidade e limites
 
@@ -39,6 +37,7 @@ Se um titular de direitos autorais ou representante identificar neste repositór
 A remoção de uma referência deste repositório não remove o material do serviço externo que o hospeda. Este aviso descreve a finalidade e o procedimento do projeto; não substitui autorização dos titulares, não garante imunidade jurídica e não determina a legalidade de conteúdos de terceiros.
 
 Este é um projeto independente, sem afiliação, patrocínio ou endosso oficial do NinjaTV ou dos mantenedores do Cloudstream.
+
 
 ## Estrutura do repositório
 
@@ -77,3 +76,4 @@ A estrutura inicial deste projeto foi baseada no template público [recloudstrea
 ## Licença do template original
 
 O README do template de origem declara que o conteúdo do template é disponibilizado em domínio público, sem condições de uso. Consulte também o repositório original e seus avisos para verificar a licença e a atribuição aplicáveis a cada componente.
+

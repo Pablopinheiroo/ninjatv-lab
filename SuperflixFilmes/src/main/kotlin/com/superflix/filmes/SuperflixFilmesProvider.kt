@@ -29,6 +29,7 @@ import com.lagradost.cloudstream3.CommonActivity
 import com.lagradost.cloudstream3.app
 import org.json.JSONArray
 import org.json.JSONTokener
+import org.json.JSONObject
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.ByteArrayInputStream
@@ -48,7 +49,7 @@ class SuperflixFilmesProvider : MainAPI() {
     override val supportedTypes = setOf(TvType.Movie)
 
     companion object {
-        const val BASE_URL = "https://superflixapi.boats"
+        const val BASE_URL = "https://superflixapi.monster"
         private const val DOCUMENTED_TEST_ID = "1135465"
 
         // Domínios oficiais/aliases conhecidos do SuperFlix. O domínio da
@@ -130,8 +131,8 @@ class SuperflixFilmesProvider : MainAPI() {
                 (host == "asiafilm.org" && path.startsWith("/4/"))
         }
 
-        private val moviePathRegex = Regex(
-            "^/filme/([^/]+)/?$",
+        private val playerPathRegex = Regex(
+            "^/(?:filme/[^/]+|serie/\\d+(?:/\\d+(?:/\\d+)?)?)/?$",
             RegexOption.IGNORE_CASE
         )
         private val yearRegex = Regex("\\b(19\\d{2}|20\\d{2})\\b")
@@ -181,67 +182,157 @@ class SuperflixFilmesProvider : MainAPI() {
         """.trimIndent()
     }
 
+
     override val mainPage = mainPageOf(
-        "$BASE_URL/filmes" to "Catálogo de filmes"
+        (BASE_URL + "/lista?category=" + "filme" + "&type=" + "imdb" + "&format=json&order=desc") to "Filmes SuperFlix"
+    )
+
+    private data class CatalogEntry(
+        val id: String,
+        val title: String? = null,
+        val poster: String? = null,
+        val year: Int? = null,
+        val kind: String? = null
     )
 
     private fun absoluteUrl(raw: String?): String? {
         if (raw.isNullOrBlank()) return null
-        val fixed = fixUrl(raw.trim())
-        return fixed.takeIf {
-            it.startsWith("https://") || it.startsWith("http://")
+        val value = raw.trim()
+        val fixed = when {
+            value.startsWith("//") -> "https:" + value
+            value.startsWith("/") -> BASE_URL + value
+            else -> fixUrl(value)
+        }
+        return fixed.takeIf { it.startsWith("https://") || it.startsWith("http://") }
+    }
+
+    private fun normalizedPoster(raw: String?): String? {
+        if (raw.isNullOrBlank()) return null
+        val value = raw.trim()
+        if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("//")) return absoluteUrl(value)
+        if (value.startsWith("/uploads/") || value.startsWith("/storage/") || value.startsWith("/images/") ||
+            value.startsWith("/assets/") || value.startsWith("/media/")) return absoluteUrl(value)
+        if (value.startsWith("/t/p/")) return "https://image.tmdb.org" + value
+        if (value.startsWith("/w") && value.length > 3) return "https://image.tmdb.org/t/p" + value
+        if (value.startsWith("/")) return "https://image.tmdb.org/t/p/w500" + value
+        return absoluteUrl(value)
+    }
+
+    private fun firstText(obj: JSONObject, keys: List<String>): String? {
+        for (key in keys) {
+            if (!obj.has(key) || obj.isNull(key)) continue
+            val value = obj.optString(key, "").trim()
+            if (value.isNotEmpty() && value != "null" && value != "false") return value
+        }
+        return null
+    }
+
+    private fun cleanCatalogId(raw: String?): String? {
+        val value = raw?.trim().orEmpty()
+        return value.takeIf { it.matches(Regex("^(tt\\d{5,12}|\\d{1,12})$")) }
+    }
+
+    private fun categoryKindMatches(kind: String?): Boolean {
+        if (kind.isNullOrBlank()) return false
+        val value = kind.lowercase().replace("á", "a").replace("ã", "a").replace("-", " ")
+        return when ("filme") {
+            "filme" -> value.contains("movie") || value.contains("filme") || value == "film"
+            "serie" -> (value == "tv" || value.contains("serie") || value.contains("series")) &&
+                !value.contains("anime") && !value.contains("dorama")
+            "anime" -> value.contains("anime")
+            "dorama" -> value.contains("dorama") || value.contains("k drama") ||
+                value.contains("j drama") || value.contains("cdrama") || value.contains("lakorn")
+            else -> false
         }
     }
 
-    private fun movieIdFrom(rawUrl: String): String? {
-        val uri = runCatching { Uri.parse(rawUrl) }.getOrNull() ?: return null
-        val match = moviePathRegex.matchEntire(uri.path.orEmpty()) ?: return null
-        return match.groupValues.getOrNull(1)?.takeIf { it.isNotBlank() }
+    private fun parseCatalogJson(raw: String?): List<CatalogEntry> {
+        if (raw.isNullOrBlank()) return emptyList()
+        val root = runCatching { JSONTokener(raw.trim()).nextValue() }.getOrNull() ?: return emptyList()
+        val entries = mutableListOf<CatalogEntry>()
+
+        fun addId(rawId: String?, title: String? = null, poster: String? = null, year: String? = null, kind: String? = null) {
+            val id = cleanCatalogId(rawId) ?: return
+            val parsedYear = year?.let { Regex("\\b(19\\d{2}|20\\d{2})\\b").find(it)?.value?.toIntOrNull() }
+            entries.add(CatalogEntry(
+                id = id,
+                title = title?.trim()?.takeIf { it.isNotBlank() && it != "null" },
+                poster = normalizedPoster(poster),
+                year = parsedYear,
+                kind = kind
+            ))
+        }
+
+        fun visit(value: Any?) {
+            when (value) {
+                is JSONArray -> for (i in 0 until value.length()) visit(value.opt(i))
+                is JSONObject -> {
+                    val rawId = firstText(value, listOf("tmdb_id","tmdb","id_tmdb","imdb_id","imdb","id","codigo"))
+                    val pageUrl = firstText(value, listOf("page_url","url","link","href","permalink"))
+                    val id = cleanCatalogId(rawId) ?: pageUrl?.let { extractCatalogId(it) }
+                    if (id != null) {
+                        addId(
+                            id,
+                            firstText(value, listOf("title","name","nome","titulo","original_title","original_name")),
+                            firstText(value, listOf("poster_url","poster","poster_path","image_url","image","thumbnail","thumb","cover")),
+                            firstText(value, listOf("year","ano","release_year","first_air_date","release_date")),
+                            firstText(value, listOf("media_type","content_type","categoria","category","tipo","tipo_conteudo","kind","section","type"))
+                        )
+                    } else {
+                        val iterator = value.keys()
+                        while (iterator.hasNext()) {
+                            val key = iterator.next()
+                            val child = value.opt(key)
+                            val keyId = cleanCatalogId(key)
+                            if (keyId != null) {
+                                if (child is JSONObject) {
+                                    addId(
+                                        keyId,
+                                        firstText(child, listOf("title","name","nome","titulo")),
+                                        firstText(child, listOf("poster_url","poster","poster_path","image","thumbnail","cover")),
+                                        firstText(child, listOf("year","ano","release_year","first_air_date","release_date")),
+                                        firstText(child, listOf("media_type","content_type","categoria","category","tipo","kind","type"))
+                                    )
+                                } else if (child is String) addId(keyId, title = child)
+                                else {
+                                    addId(keyId)
+                                    visit(child)
+                                }
+                            } else visit(child)
+                        }
+                    }
+                    for (key in listOf("results","data","items","ids","titles","list","catalog","records","content")) {
+                        val child = value.opt(key)
+                        if (child is JSONArray || child is JSONObject) visit(child)
+                    }
+                }
+                is Number -> addId(value.toLong().toString())
+                is String -> addId(value)
+            }
+        }
+        visit(root)
+        return entries.distinctBy { it.id }
+    }
+
+    private fun extractCatalogId(rawUrl: String): String? {
+        val uri = runCatching { Uri.parse(absoluteUrl(rawUrl) ?: rawUrl) }.getOrNull() ?: return null
+        val match = Regex("^/filme/([^/]+)/?$", RegexOption.IGNORE_CASE).matchEntire(uri.path.orEmpty()) ?: return null
+        return cleanCatalogId(match.groupValues.getOrNull(1))
     }
 
     private fun validatedEmbedUrl(raw: String?): String? {
         val candidate = absoluteUrl(raw) ?: return null
         val uri = runCatching { Uri.parse(candidate) }.getOrNull() ?: return null
-        val knownHost = uri.host
-            ?.lowercase()
-            ?.let { it in allowedPlayerHosts }
-            ?: false
-
-        // Mantém HTTPS e o caminho esperado do player. Aceita os aliases
-        // conhecidos porque o iframe pode usar domínio diferente da página.
-        if (uri.scheme != "https" ||
-            !knownHost ||
-            moviePathRegex.matchEntire(uri.path.orEmpty()) == null
-        ) {
-            return null
-        }
-        return candidate
-    }
-
-    private fun elementImage(element: Element?): String? {
-        if (element == null) return null
-        val raw = sequenceOf(
-            element.attr("src"),
-            element.attr("data-src"),
-            element.attr("data-lazy-src"),
-            element.attr("data-original"),
-            element.attr("srcset").substringBefore(",").substringBefore(" ")
-        ).firstOrNull { it.isNotBlank() }
-        return absoluteUrl(raw)
+        val hostAllowed = uri.host?.lowercase()?.let { it in allowedPlayerHosts } ?: false
+        return candidate.takeIf { uri.scheme == "https" && hostAllowed && playerPathRegex.matches(uri.path.orEmpty()) }
     }
 
     private fun titleFromCard(anchor: Element, id: String): String {
         return sequenceOf(
-            anchor.selectFirst("img")?.attr("alt"),
-            anchor.attr("title"),
-            anchor.attr("aria-label"),
-            anchor.selectFirst("h2, h3, h4, [class*=title], [class*=name]")?.text(),
-            anchor.text()
-        ).firstOrNull { !it.isNullOrBlank() }
-            ?.replace(Regex("\\s+"), " ")
-            ?.trim()
-            ?.takeIf { it.isNotBlank() }
-            ?: "Filme $id"
+            anchor.selectFirst("img")?.attr("alt"), anchor.attr("title"), anchor.attr("aria-label"),
+            anchor.selectFirst("h2, h3, h4, [class*=title], [class*=name]")?.text(), anchor.text()
+        ).firstOrNull { !it.isNullOrBlank() }?.replace(Regex("\\s+"), " ")?.trim()
+            ?.takeIf { it.isNotBlank() } ?: ("Filme" + " " + id)
     }
 
     private fun yearFrom(vararg values: String?): Int? {
@@ -254,147 +345,212 @@ class SuperflixFilmesProvider : MainAPI() {
         return null
     }
 
-    private fun toSearchResponse(anchor: Element): SearchResponse? {
-        val href = absoluteUrl(anchor.attr("href")) ?: return null
-        val id = movieIdFrom(href) ?: return null
-        val title = titleFromCard(anchor, id)
-        val year = yearFrom(title, href, anchor.text())
-        val cleanTitle = title
-            .replace(Regex("\\s*\\(?\\b(19\\d{2}|20\\d{2})\\)?\\s*$"), "")
-            .trim()
-            .ifBlank { title }
+    private fun elementImage(element: Element?): String? {
+        if (element == null) return null
+        val raw = sequenceOf(element.attr("src"),element.attr("data-src"),element.attr("data-lazy-src"),
+            element.attr("data-original"),element.attr("srcset").substringBefore(",").substringBefore(" "))
+            .firstOrNull { it.isNotBlank() }
+        return normalizedPoster(raw)
+    }
 
-        return newMovieSearchResponse(
-            cleanTitle,
-            "$mainUrl/filme/$id",
-            TvType.Movie
-        ) {
-            posterUrl = elementImage(anchor.selectFirst("img"))
-            this.year = year
+    private fun extractHtmlEntries(document: Document): List<CatalogEntry> {
+        return document.select("a[href]").mapNotNull { anchor ->
+            val href = absoluteUrl(anchor.attr("href")) ?: return@mapNotNull null
+            val id = extractCatalogId(href) ?: return@mapNotNull null
+            CatalogEntry(id,titleFromCard(anchor,id),elementImage(anchor.selectFirst("img")),
+                yearFrom(anchor.text(),anchor.attr("title"),href))
+        }.distinctBy { it.id }
+    }
+
+    private fun contentPageUrl(id: String): String = BASE_URL + "/filme/" + id
+
+    private fun toSearchResponse(entry: CatalogEntry): SearchResponse {
+        val title = entry.title?.trim()?.takeIf { it.isNotEmpty() } ?: ("Filme" + " " + entry.id)
+        val url = contentPageUrl(entry.id)
+        return when ("movie") {
+            "movie" -> newMovieSearchResponse(title,url,TvType.Movie) { posterUrl=entry.poster; year=entry.year }
+            "anime" -> newAnimeSearchResponse(title,url,TvType.Anime) { posterUrl=entry.poster; year=entry.year }
+            else -> newTvSeriesSearchResponse(title,url,TvType.TvSeries) { posterUrl=entry.poster; year=entry.year }
         }
     }
 
-    private fun extractCards(document: Document): List<SearchResponse> {
-        return document.select("a[href]")
-            .mapNotNull { toSearchResponse(it) }
-            .distinctBy { it.url }
-    }
-
-    private fun documentedTestMovie(): SearchResponse {
-        return newMovieSearchResponse(
-            "Filme de teste SuperFlix — ID 1135465",
-            "$mainUrl/filme/$DOCUMENTED_TEST_ID",
-            TvType.Movie
-        ) {
-            year = 1972
-        }
-    }
-
-    private fun hasNextPage(document: Document, currentPage: Int): Boolean {
-        val nextNumber = currentPage + 1
-        return document.select("a[href], link[rel=next]").any { element ->
-            val href = element.attr("href")
-            element.attr("rel").equals("next", ignoreCase = true) ||
-                href.contains("page=$nextNumber") ||
-                href.contains("/page/$nextNumber/")
-        }
-    }
-
-    override suspend fun getMainPage(
-        page: Int,
-        request: MainPageRequest
-    ): HomePageResponse {
-        val base = request.data.ifBlank { "$mainUrl/filmes" }
-        val pageUrl = if (page <= 1) {
-            base
+    private suspend fun fetchApiEntries(query: String? = null): List<CatalogEntry> {
+        val url = if (query.isNullOrBlank()) {
+            BASE_URL + "/lista?category=" + "filme" + "&type=" + "imdb" + "&format=json&order=desc"
         } else {
-            val separator = if (base.contains("?")) "&" else "?"
-            base + separator + "page=" + page
+            BASE_URL + "/lista?category=pesquisa&q=" + URLEncoder.encode(query,"UTF-8") + "&type=tmdb&format=json"
         }
-
-        val document = runCatching {
-            app.get(pageUrl, referer = mainUrl).document
+        val raw = runCatching {
+            app.get(url,referer=mainUrl,headers=mapOf("Accept" to "application/json")).text
         }.getOrNull()
-
-        val cards = document?.let { extractCards(it) }.orEmpty()
-        val results = if (page == 1) {
-            listOf(documentedTestMovie()) + cards.filterNot {
-                it.url.endsWith("/filme/$DOCUMENTED_TEST_ID")
-            }
-        } else {
-            cards
+        val entries = parseCatalogJson(raw)
+        if (query.isNullOrBlank()) return entries
+        return entries.filter { entry ->
+            categoryKindMatches(entry.kind) &&
+                (entry.title?.contains(query,ignoreCase=true)==true || entry.id.equals(query.trim(),ignoreCase=true))
         }
+    }
 
-        return newHomePageResponse(
-            request.name,
-            results.distinctBy { it.url },
-            document?.let { hasNextPage(it, page) } ?: false
-        )
+    private suspend fun fetchHtmlEntries(page: Int, query: String? = null): Pair<List<CatalogEntry>,Boolean> {
+        val url = if (!query.isNullOrBlank()) {
+            BASE_URL + "/pesquisar?query=" + URLEncoder.encode(query,"UTF-8")
+        } else {
+            val separator = if ("filmes".contains("?")) "&" else "?"
+            BASE_URL + "/" + "filmes" + if (page<=1) "" else separator + "page=" + page
+        }
+        val document = runCatching { app.get(url,referer=mainUrl).document }.getOrNull()
+            ?: return emptyList<CatalogEntry>() to false
+        return extractHtmlEntries(document) to hasNextPage(document,page)
+    }
+
+    private fun hasNextPage(document: Document,currentPage: Int): Boolean {
+        val nextNumber=currentPage+1
+        return document.select("a[href], link[rel=next]").any { element ->
+            val href=element.attr("href")
+            element.attr("rel").equals("next",ignoreCase=true) || href.contains("page="+nextNumber) ||
+                href.contains("/page/"+nextNumber+"/")
+        }
+    }
+
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        val apiEntries=fetchApiEntries()
+        val (htmlEntries,htmlHasNext)=fetchHtmlEntries(page)
+        val htmlById=htmlEntries.associateBy { it.id }
+        val merged=if (apiEntries.isNotEmpty()) {
+            apiEntries.map { api ->
+                val html=htmlById[api.id]
+                api.copy(title=api.title?:html?.title,poster=api.poster?:html?.poster,year=api.year?:html?.year)
+            } + htmlEntries.filterNot { html -> apiEntries.any { it.id==html.id } }
+        } else htmlEntries
+
+        val distinct=merged.distinctBy { it.id }
+        val pageSize=24
+        val start=if (apiEntries.isNotEmpty()) ((page.coerceAtLeast(1)-1)*pageSize).coerceAtLeast(0) else 0
+        val visible=distinct.drop(start).take(pageSize)
+        val responses=visible.map { toSearchResponse(it) }.toMutableList()
+        if (true && page==1 && responses.none { it.url.endsWith("/filme/"+DOCUMENTED_TEST_ID) }) {
+            responses.add(0,documentedTestMovie())
+        }
+        val hasMore=distinct.size>start+pageSize || htmlHasNext
+        return newHomePageResponse(request.name,responses,hasMore)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val term = query.trim()
+        val term=query.trim()
         if (term.isEmpty()) return emptyList()
-
-        val encoded = URLEncoder.encode(term, "UTF-8")
-        val searchUrl = "$mainUrl/lista?category=pesquisa&q=$encoded&format=html"
-        val document = app.get(searchUrl, referer = mainUrl).document
-        return extractCards(document)
+        val apiEntries=fetchApiEntries(term)
+        if (apiEntries.isNotEmpty()) return apiEntries.map { toSearchResponse(it) }
+        val (htmlEntries,_)=fetchHtmlEntries(1,term)
+        return htmlEntries.map { toSearchResponse(it) }
     }
 
-    private fun pageTitle(document: Document?, fallback: String): String {
+    private fun pageTitle(document: Document?,fallback: String): String {
         return document?.selectFirst("h1")?.text()?.trim()?.takeIf { it.isNotBlank() }
-            ?: document?.selectFirst("meta[property=og:title]")?.attr("content")
-                ?.trim()?.takeIf { it.isNotBlank() }
-            ?: document?.title()?.substringBefore("|")?.trim()
-                ?.takeIf { it.isNotBlank() }
-            ?: fallback
+            ?: document?.selectFirst("meta[property=og:title]")?.attr("content")?.trim()?.takeIf { it.isNotBlank() }
+            ?: document?.title()?.substringBefore("|")?.trim()?.takeIf { it.isNotBlank() } ?: fallback
     }
 
     private fun pagePoster(document: Document?): String? {
-        val meta = document?.selectFirst("meta[property=og:image]")?.attr("content")
-        return absoluteUrl(meta)
-            ?: elementImage(document?.selectFirst("main img, article img, img[alt]"))
+        val meta=document?.selectFirst("meta[property=og:image]")?.attr("content")
+        return normalizedPoster(meta) ?: elementImage(document?.selectFirst("main img, article img, img[alt]"))
     }
 
     private fun pagePlot(document: Document?): String? {
-        return document?.selectFirst("meta[property=og:description]")?.attr("content")
-            ?.trim()?.takeIf { it.isNotBlank() }
-            ?: document?.selectFirst("meta[name=description]")?.attr("content")
-                ?.trim()?.takeIf { it.isNotBlank() }
-            ?: document?.selectFirst("main p, article p")?.text()
-                ?.trim()?.takeIf { it.length > 30 }
+        return document?.selectFirst("meta[property=og:description]")?.attr("content")?.trim()?.takeIf { it.isNotBlank() }
+            ?: document?.selectFirst("meta[name=description]")?.attr("content")?.trim()?.takeIf { it.isNotBlank() }
+            ?: document?.selectFirst("main p, article p")?.text()?.trim()?.takeIf { it.length>30 }
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val canonicalUrl = absoluteUrl(url)
-            ?: throw ErrorLoadingException("Endereço de filme inválido.")
-        val id = movieIdFrom(canonicalUrl)
-            ?: throw ErrorLoadingException("ID de filme SuperFlix inválido.")
-
-        val document = runCatching {
-            app.get(canonicalUrl, referer = mainUrl).document
-        }.getOrNull()
-
-        val title = pageTitle(document, "Filme $id")
-        val poster = pagePoster(document)
-        val plot = pagePlot(document)
-        val year = yearFrom(title, canonicalUrl, document?.text())
-
-        // CustomMedia faz o clique em Assistir ser encaminhado ao loadLinks
-        // da extensão, sem abrir o player de vídeo padrão.
-        return newMovieLoadResponse(
-            title,
-            canonicalUrl,
-            TvType.CustomMedia,
-            canonicalUrl
-        ) {
-            posterUrl = poster
-            this.year = year
-            this.plot = plot
+        val canonicalUrl=absoluteUrl(url) ?: throw ErrorLoadingException("Endereço de conteúdo inválido.")
+        val id=extractCatalogId(canonicalUrl) ?: throw ErrorLoadingException("ID de conteúdo SuperFlix inválido.")
+        val document=runCatching { app.get(canonicalUrl,referer=mainUrl).document }.getOrNull()
+        val title=pageTitle(document,"Filme"+" "+id)
+        val poster=pagePoster(document)
+        val plot=pagePlot(document)
+        val year=yearFrom(title,canonicalUrl,document?.text())
+        if ("movie"=="movie") {
+            return newMovieLoadResponse(title,canonicalUrl,TvType.CustomMedia,canonicalUrl) {
+                posterUrl=poster; this.year=year; this.plot=plot
+            }
+        }
+        val episodes=collectEpisodes(id,document,poster)
+        return if ("movie"=="anime") {
+            newAnimeLoadResponse(title,canonicalUrl,TvType.Anime) {
+                posterUrl=poster; this.year=year; this.plot=plot
+                addEpisodes(DubStatus.Subbed,episodes)
+            }
+        } else {
+            newTvSeriesLoadResponse(title,canonicalUrl,TvType.TvSeries,episodes) {
+                posterUrl=poster; this.year=year; this.plot=plot
+            }
         }
     }
 
+    private suspend fun collectEpisodes(id: String,detail: Document?,poster: String?): List<Episode> {
+        val episodes=mutableListOf<Episode>()
+        if (detail!=null) episodes.addAll(extractEpisodes(detail,id,poster))
+        if (episodes.isNotEmpty()) return episodes.distinctBy { it.data }
+        val seasons=detail?.let { extractSeasonNumbers(it,id) }.orEmpty().ifEmpty { listOf(1) }
+        for (season in seasons.distinct().take(24)) {
+            val seasonUrl=BASE_URL+"/serie/"+id+"/"+season
+            val seasonDocument=runCatching { app.get(seasonUrl,referer=mainUrl).document }.getOrNull() ?: continue
+            episodes.addAll(extractEpisodes(seasonDocument,id,poster))
+        }
+        return episodes.distinctBy { it.data }
+            .sortedWith(compareBy<Episode> { it.season?:1 }.thenBy { it.episode?:Int.MAX_VALUE })
+    }
+
+    private fun extractSeasonNumbers(document: Document,id: String): List<Int> {
+        val html=document.html().replace("\\/","/").replace("&amp;","&")
+        val pattern=Regex("/serie/"+Regex.escape(id)+"/(\\d+)(?:/|[?\"'])")
+        return pattern.findAll(html).mapNotNull { it.groupValues.getOrNull(1)?.toIntOrNull() }.distinct().sorted().toList()
+    }
+
+    private fun extractEpisodes(document: Document,id: String,poster: String?): List<Episode> {
+        val found=linkedMapOf<String,Episode>()
+        val pathPattern=Regex("^/serie/"+Regex.escape(id)+"/(\\d+)/(\\d+)/?$",RegexOption.IGNORE_CASE)
+        document.select("a[href]").forEach { anchor ->
+            val absolute=absoluteUrl(anchor.attr("href")) ?: return@forEach
+            val uri=runCatching { Uri.parse(absolute) }.getOrNull() ?: return@forEach
+            val match=pathPattern.matchEntire(uri.path.orEmpty()) ?: return@forEach
+            val season=match.groupValues[1].toIntOrNull() ?: return@forEach
+            val number=match.groupValues[2].toIntOrNull() ?: return@forEach
+            val label=sequenceOf(anchor.attr("title"),anchor.attr("aria-label"),
+                anchor.selectFirst("[class*=title], [class*=name], span")?.text(),anchor.text())
+                .firstOrNull { !it.isNullOrBlank() }?.replace(Regex("\\s+")," ")?.trim()
+                ?.takeIf { it.isNotBlank() } ?: ("Temporada "+season+" · Episódio "+number)
+            val episodeUrl=BASE_URL+"/serie/"+id+"/"+season+"/"+number
+            found[episodeUrl]=newEpisode(episodeUrl) {
+                name=label; this.season=season; episode=number
+                posterUrl=elementImage(anchor.selectFirst("img"))?:poster
+            }
+        }
+        val normalizedHtml=document.html().replace("\\/","/").replace("&amp;","&")
+        val embeddedPattern=Regex("/serie/"+Regex.escape(id)+"/(\\d+)/(\\d+)")
+        embeddedPattern.findAll(normalizedHtml).forEach { match ->
+            val season=match.groupValues[1].toIntOrNull() ?: return@forEach
+            val number=match.groupValues[2].toIntOrNull() ?: return@forEach
+            val episodeUrl=BASE_URL+"/serie/"+id+"/"+season+"/"+number
+            if (!found.containsKey(episodeUrl)) found[episodeUrl]=newEpisode(episodeUrl) {
+                name="Temporada "+season+" · Episódio "+number
+                this.season=season; episode=number; posterUrl=poster
+            }
+        }
+        return found.values.sortedWith(compareBy<Episode> { it.season?:1 }.thenBy { it.episode?:Int.MAX_VALUE })
+    }
+
+    private fun iframePlayerPathAllowed(rawUrl: String): Boolean {
+        val candidate=absoluteUrl(rawUrl) ?: return false
+        val uri=runCatching { Uri.parse(candidate) }.getOrNull() ?: return false
+        val hostAllowed=uri.host?.lowercase()?.let { it in allowedPlayerHosts } ?: false
+        return uri.scheme=="https" && hostAllowed && playerPathRegex.matchEntire(uri.path.orEmpty())!=null
+    }
+
+    private fun documentedTestMovie(): SearchResponse {
+        return newMovieSearchResponse("Filme de teste SuperFlix — ID "+DOCUMENTED_TEST_ID,
+            BASE_URL+"/filme/"+DOCUMENTED_TEST_ID,TvType.Movie) { year=1972 }
+    }
     private fun iframeHtml(embedUrl: String): String {
         val safeUrl = embedUrl
             .replace("&", "&amp;")
@@ -1235,6 +1391,7 @@ class SuperflixFilmesProvider : MainAPI() {
         return true
     }
 
+
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -1242,17 +1399,8 @@ class SuperflixFilmesProvider : MainAPI() {
         callback: (com.lagradost.cloudstream3.utils.ExtractorLink) -> Unit
     ): Boolean {
         if (isCasting) return false
-
-        val sourcePageUrl = absoluteUrl(data) ?: return false
-        val uri = runCatching { Uri.parse(sourcePageUrl) }.getOrNull() ?: return false
-
-        if (uri.scheme != "https" ||
-            !uri.host.equals(Uri.parse(mainUrl).host, ignoreCase = true) ||
-            moviePathRegex.matchEntire(uri.path.orEmpty()) == null
-        ) {
-            return false
-        }
-
+        val sourcePageUrl=absoluteUrl(data) ?: return false
+        if (!iframePlayerPathAllowed(sourcePageUrl) || !Regex("^/filme/[^/]+/?$", RegexOption.IGNORE_CASE).matches(Uri.parse(sourcePageUrl).path.orEmpty())) return false
         return showEmbeddedPlayer(sourcePageUrl)
     }
 }
