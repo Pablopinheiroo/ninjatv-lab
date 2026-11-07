@@ -1,0 +1,99 @@
+[
+    {
+        "fileHash": "sha256-1e32ea735b49d21e4dbb40e7c7168ac031f468fcc6fa007610633afcbb207aea",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Pablopinheiroo/ninjatv-lab",
+        "fileSize": 25970,
+        "status": 1,
+        "language": "pt-BR",
+        "authors": [
+            "Pablopinheiroo"
+        ],
+        "tvTypes": [
+            "Anime"
+        ],
+        "version": 3,
+        "internalName": "AnimesSuperflix",
+        "description": "Cat\u00e1logo de animes da SuperFlixAPI por TMDB, g\u00eaneros, busca e player compartilhado em WebView.",
+        "url": "https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/lab-builds/AnimesSuperflix.cs3",
+        "name": "AnimesSuperflix"
+    },
+    {
+        "fileHash": "sha256-1d19d07c4f7fbf92eaa25725aa82010412c5f93233d896a61a2179be860afcf6",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Pablopinheiroo/ninjatv-lab",
+        "fileSize": 19095,
+        "status": 1,
+        "language": "pt-BR",
+        "authors": [
+            "Pablopinheiroo"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "Anime"
+        ],
+        "version": 2,
+        "internalName": "Donflix",
+        "description": "Cat\u00e1logo do Donflix: filmes, s\u00e9ries, animes, categorias, busca e detalhes.",
+        "url": "https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/lab-builds/Donflix.cs3",
+        "name": "Donflix"
+    },
+    {
+        "fileHash": "sha256-9d00b4206574373f6bbc06be7ea57a1d44113a417546d42e6686b963c69deedf",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Pablopinheiroo/ninjatv-lab",
+        "fileSize": 25720,
+        "status": 1,
+        "language": "pt-BR",
+        "authors": [
+            "Pablopinheiroo"
+        ],
+        "tvTypes": [
+            "TvSeries"
+        ],
+        "version": 3,
+        "internalName": "DoramasSuperflix",
+        "description": "Cat\u00e1logo de doramas da SuperFlixAPI por TMDB, g\u00eaneros, busca e player compartilhado em WebView.",
+        "url": "https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/lab-builds/DoramasSuperflix.cs3",
+        "name": "DoramasSuperflix"
+    },
+    {
+        "fileHash": "sha256-dcc62368cce1ded82196d957c6f4335d5d20438db43f868d86f918400535c0ce",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Pablopinheiroo/ninjatv-lab",
+        "fileSize": 25888,
+        "status": 1,
+        "language": "pt-BR",
+        "authors": [
+            "Pablopinheiroo"
+        ],
+        "tvTypes": [
+            "TvSeries"
+        ],
+        "version": 3,
+        "internalName": "SeriesSuperflix",
+        "description": "Cat\u00e1logo de s\u00e9ries da SuperFlixAPI por TMDB, g\u00eaneros, busca e player compartilhado em WebView.",
+        "url": "https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/lab-builds/SeriesSuperflix.cs3",
+        "name": "SeriesSuperflix"
+    },
+    {
+        "fileHash": "sha256-63c5152eebcada1e9d4071ac1f5b8c77d714bc73f47ddda8c0272dfc8ffbd3c2",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Pablopinheiroo/ninjatv-lab",
+        "fileSize": 25969,
+        "status": 1,
+        "language": "pt-BR",
+        "authors": [
+            "Pablopinheiroo"
+        ],
+        "tvTypes": [
+            "Movie"
+        ],
+        "version": 35,
+        "internalName": "SuperflixFilmes",
+        "description": "Cat\u00e1logo de filmes da SuperFlixAPI por TMDB, g\u00eaneros, busca e player compartilhado em WebView.",
+        "url": "https://raw.githubusercontent.com/Pablopinheiroo/ninjatv-lab/lab-builds/SuperflixFilmes.cs3",
+        "name": "SuperflixFilmes"
+    }
+]
