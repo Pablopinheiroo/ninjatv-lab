@@ -71,7 +71,7 @@
 
   <section class="card">
     <h2>Diagnóstico do navegador</h2>
-    <p class="muted small">Verifica recursos gerais do navegador/WebView e erros de carregamento nesta página. Não lê valores de cookies, não coleta tokens e não envia os dados para outro serviço.</p>
+    <p class="muted small">Verifica recursos desta página e registra os callbacks de sucesso/erro do widget. Não lê cookies nem coleta tokens. A versão do Android System WebView e a configuração nativa de cookies só podem ser lidas pelo próprio aplicativo Android.</p>
     <p id="diagnosticStatus" class="muted status">Diagnóstico ainda não executado.</p>
     <button id="runDiagnostics">Executar diagnóstico local</button>
     <button id="clearDiagnostics" class="secondary">Limpar registros locais</button>
@@ -126,16 +126,21 @@
         size: config.size,
         callback: value => {
           token = value;
+          window.dispatchEvent(new Event("ninja-turnstile-success"));
           verifyButton.disabled = false;
           widgetStatus.textContent = "Token de teste recebido. Pronto para validar no servidor.";
         },
         "error-callback": code => {
           token = "";
+          window.dispatchEvent(new CustomEvent("ninja-turnstile-error", {
+            detail: { code: String(code || "sem código").slice(0, 80) }
+          }));
           verifyButton.disabled = true;
           widgetStatus.textContent = "O widget informou erro: " + (code || "sem código");
         },
         "expired-callback": () => {
           token = "";
+          window.dispatchEvent(new Event("ninja-turnstile-expired"));
           verifyButton.disabled = true;
           widgetStatus.textContent = "Token expirado. Reinicie o widget.";
         }
