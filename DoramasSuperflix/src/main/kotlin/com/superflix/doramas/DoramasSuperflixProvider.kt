@@ -7,7 +7,7 @@ import org.json.JSONObject
 import java.net.URLEncoder
 
 /**
- * Catálogo de doramas baseado na API pública TVmaze.
+ * Catálogo de doramas baseado no índice público TVmaze.
  * TVmaze publica seus dados sob CC BY-SA; consulte a atribuição no README.
  * Somente metadados; não oferece fontes de vídeo.
  */
@@ -22,12 +22,40 @@ class DoramasSuperflixProvider : MainAPI() {
 
     private val asianCountries = setOf("KR", "JP", "CN", "TW", "HK")
 
+    private val categoryPages = listOf(
+        "genre|Action" to "Ação",
+        "genre|Action,Adventure" to "Action & Adventure",
+        "genre|Anime,Animation" to "Animação",
+        "genre|Adventure" to "Aventura",
+        "genre|Comedy" to "Comédia",
+        "genre|Crime" to "Crime",
+        "genre|Documentary" to "Documentário",
+        "genre|Drama" to "Drama",
+        "genre|Family" to "Família",
+        "genre|Fantasy" to "Fantasia",
+        "genre|Western" to "Faroeste",
+        "genre|Science-Fiction" to "Ficção científica",
+        "genre|War" to "Guerra",
+        "genre|History" to "História",
+        "genre|Mystery" to "Mistério",
+        "genre|Music" to "Música",
+        "genre|Romance" to "Romance",
+        "genre|Science-Fiction,Fantasy" to "Sci-Fi & Fantasy",
+        "genre|Horror" to "Terror",
+        "genre|Thriller" to "Thriller",
+        "genre|War" to "War & Politics"
+    )
+
     override val mainPage = mainPageOf(
-        "drama" to "Doramas em destaque",
-        "korean" to "Coreanos",
-        "japanese" to "Japoneses",
-        "chinese" to "Chineses",
-        "taiwanese" to "Taiwaneses"
+        *(
+            listOf(
+                "asian" to "Doramas em destaque",
+                "country|KR" to "Coreanos",
+                "country|JP" to "Japoneses",
+                "country|CN" to "Chineses",
+                "country|TW" to "Taiwaneses"
+            ) + categoryPages
+        ).toTypedArray()
     )
 
     private fun clean(value: String?): String? =
@@ -45,9 +73,12 @@ class DoramasSuperflixProvider : MainAPI() {
             .firstOrNull { !it.isNullOrBlank() && it != "null" }
     }
 
+    private fun showLanguage(show: JSONObject): String =
+        clean(show.optString("language")) ?: ""
+
     private fun isDorama(show: JSONObject): Boolean {
         val code = countryCode(show)
-        val language = show.optString("language")
+        val language = showLanguage(show)
         return code in asianCountries ||
             language.equals("Korean", true) ||
             language.equals("Japanese", true) ||
@@ -64,6 +95,28 @@ class DoramasSuperflixProvider : MainAPI() {
         return (0 until genres.length()).mapNotNull { index ->
             clean(genres.optString(index))
         }.distinct()
+    }
+
+    private fun matchesCategory(show: JSONObject, data: String): Boolean {
+        if (data.startsWith("country|")) {
+            val expected = data.substringAfter("country|")
+            val code = countryCode(show)
+            val language = showLanguage(show)
+            return code == expected || when (expected) {
+                "KR" -> language.equals("Korean", true)
+                "JP" -> language.equals("Japanese", true)
+                "CN", "TW" -> language.equals("Chinese", true)
+                else -> false
+            }
+        }
+        if (data.startsWith("genre|")) {
+            val wanted = data.substringAfter("genre|").split(",").map { it.trim() }
+            val actual = showGenres(show)
+            return wanted.any { selected ->
+                actual.any { it.equals(selected, ignoreCase = true) }
+            }
+        }
+        return true
     }
 
     private fun toSearchResponse(show: JSONObject): SearchResponse? {
@@ -86,24 +139,31 @@ class DoramasSuperflixProvider : MainAPI() {
         }.distinctBy { it.url }
     }
 
+    private fun parseIndex(json: JSONArray, category: String): List<SearchResponse> {
+        return (0 until json.length()).mapNotNull { index ->
+            val show = json.optJSONObject(index) ?: return@mapNotNull null
+            if (!isDorama(show) || !matchesCategory(show, category)) return@mapNotNull null
+            toSearchResponse(show)
+        }.distinctBy { it.url }
+    }
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val query = when (request.data) {
-            "korean" -> "korean"
-            "japanese" -> "japanese"
-            "chinese" -> "chinese"
-            "taiwanese" -> "taiwanese"
-            else -> "drama"
-        }
-        val endpoint = "https://api.tvmaze.com/search/shows?q=" + URLEncoder.encode(query, "UTF-8")
-        val items = parseSearch(JSONArray(app.get(endpoint).text))
-        return newHomePageResponse(request.name, items, false)
+        // TVmaze show index is paginated by 250 IDs per page; the app page number
+        // follows the index so browsing can continue beyond the first 100 results.
+        val indexPage = (page - 1).coerceAtLeast(0)
+        val endpoint = "https://api.tvmaze.com/shows?page=" + indexPage
+        val json = JSONArray(app.get(endpoint).text)
+        val items = parseIndex(json, request.data)
+        return newHomePageResponse(request.name, items, json.length() >= 250)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
         val term = query.trim()
         if (term.isEmpty()) return emptyList()
-        val endpoint = "https://api.tvmaze.com/search/shows?q=" + URLEncoder.encode(term, "UTF-8")
+        val endpoint = "https://api.tvmaze.com/search/shows?q=" +
+            URLEncoder.encode(term, "UTF-8").replace("+", "%20")
         return parseSearch(JSONArray(app.get(endpoint).text))
+            .distinctBy { it.url }
     }
 
     override suspend fun load(url: String): LoadResponse {

@@ -23,10 +23,37 @@ class SuperflixFilmesProvider : MainAPI() {
     companion object {
         private const val BASE_URL = "https://v3-cinemeta.strem.io"
         private const val CONTENT_TYPE = "movie"
+        private const val CATALOG_PAGE_SIZE = 100
         private val yearRegex = Regex("\\b(19|20)\\d{2}\\b")
     }
 
-    override val mainPage = mainPageOf("top" to "Em destaque")
+    override val mainPage = mainPageOf(
+        "top" to "Em destaque",
+        "genre|Action" to "Ação",
+        "genre|Action & Adventure" to "Action & Adventure",
+        "genre|Animation" to "Animação",
+        "genre|Adventure" to "Aventura",
+        "genre|TV Movie" to "Cinema TV",
+        "genre|Comedy" to "Comédia",
+        "genre|Crime" to "Crime",
+        "genre|Documentary" to "Documentário",
+        "genre|Drama" to "Drama",
+        "genre|Family" to "Família",
+        "genre|Fantasy" to "Fantasia",
+        "genre|Western" to "Faroeste",
+        "genre|Science Fiction" to "Ficção científica",
+        "genre|War" to "Guerra",
+        "genre|History" to "História",
+        "genre|Mystery" to "Mistério",
+        "genre|Music" to "Música",
+        "genre|Other" to "Outros",
+        "genre|Reality" to "Reality",
+        "genre|Romance" to "Romance",
+        "genre|Sci-Fi & Fantasy" to "Sci-Fi & Fantasy",
+        "genre|Horror" to "Terror",
+        "genre|Thriller" to "Thriller",
+        "genre|War & Politics" to "War & Politics"
+    )
 
     private fun clean(value: String?): String? =
         value?.replace(Regex("<[^>]*>"), " ")
@@ -47,6 +74,9 @@ class SuperflixFilmesProvider : MainAPI() {
             }
         }.distinct()
     }
+
+    private fun pathEncode(value: String): String =
+        URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
     private fun toSearchResponse(item: JSONObject): SearchResponse? {
         val id = clean(item.optString("id")) ?: return null
@@ -69,18 +99,23 @@ class SuperflixFilmesProvider : MainAPI() {
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val skip = if (page <= 1) "" else "/skip=" + ((page - 1) * 25)
-        val endpoint = BASE_URL + "/catalog/" + CONTENT_TYPE + "/" + request.data + skip + ".json"
+        val genre = request.data.takeIf { it.startsWith("genre|") }
+            ?.substringAfter("genre|")
+        val extras = mutableListOf<String>()
+        if (!genre.isNullOrBlank()) extras.add("genre=" + pathEncode(genre))
+        if (page > 1) extras.add("skip=" + ((page - 1) * CATALOG_PAGE_SIZE))
+        val suffix = if (extras.isEmpty()) "" else "/" + extras.joinToString("&")
+        val endpoint = BASE_URL + "/catalog/" + CONTENT_TYPE + "/top" + suffix + ".json"
         val json = JSONObject(app.get(endpoint).text)
         val items = parseCatalog(json)
-        return newHomePageResponse(request.name, items, items.size >= 25)
+        return newHomePageResponse(request.name, items, items.size >= CATALOG_PAGE_SIZE)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
         val term = query.trim()
         if (term.isEmpty()) return emptyList()
-        val encoded = URLEncoder.encode(term, "UTF-8")
-        val endpoint = BASE_URL + "/catalog/" + CONTENT_TYPE + "/top/search=" + encoded + ".json"
+        val endpoint = BASE_URL + "/catalog/" + CONTENT_TYPE + "/top/search=" +
+            pathEncode(term) + ".json"
         return parseCatalog(JSONObject(app.get(endpoint).text))
     }
 

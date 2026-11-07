@@ -4,16 +4,18 @@ Projeto independente para estudo e testes de desenvolvimento de extensões basea
 
 ## Catálogos especializados
 
-A branch `lab/turnstile-workers` contém quatro catálogos independentes, identificados com os nomes solicitados:
+A branch `lab/turnstile-workers` contém quatro catálogos independentes:
 
-| Extensão | Fonte de metadados | Conteúdo |
+| Extensão | Fonte de metadados | Organização |
 |---|---|---|
-| Filmes Superflix | Cinemeta | Filmes, capas, sinopses, gêneros, ano e pesquisa |
-| Séries Superflix | Cinemeta | Séries, capas, sinopses, gêneros, ano e pesquisa |
-| Animes Superflix | Jikan API | Animes, capas, sinopses, gêneros, ano e pesquisa |
-| Doramas Superflix | TVmaze | Doramas asiáticos, capas, sinopses, gêneros, ano e pesquisa |
+| Filmes Superflix | Cinemeta | Gêneros do catálogo Superflix, pesquisa e páginas de 100 títulos |
+| Séries Superflix | Cinemeta | Gêneros do catálogo Superflix, pesquisa e páginas de 100 títulos |
+| Animes Superflix | Kitsu API | Categorias próprias de anime e paginação por 20 itens |
+| Doramas Superflix | TVmaze | Filtros por país/idioma e gêneros; índice em páginas de 250 registros |
 
-**Importante:** os nomes das extensões são rótulos escolhidos para o projeto. Elas não são oficiais nem afiliadas ao site Superflix. Os dados de catálogo vêm das APIs indicadas acima; não são copiados do catálogo Superflix.
+Os rótulos de gênero de filmes e séries seguem a organização pública observada nas páginas de catálogo do Superflix. Os metadados continuam sendo obtidos de fontes independentes, não do catálogo de títulos do Superflix.
+
+**Importante:** os nomes das extensões são rótulos escolhidos para o projeto. Elas não são oficiais nem afiliadas ao site Superflix. A disponibilidade e a quantidade de títulos variam de acordo com a base de metadados de cada fonte; isso não é uma cópia integral do acervo do Superflix.
 
 ## Limites de reprodução
 
@@ -23,8 +25,8 @@ O módulo antigo `SuperflixFilmes`, anteriormente descrito como teste experiment
 
 ## Fontes e atribuição
 
-- **Cinemeta:** catálogo de metadados de filmes e séries. Documentação de integração: https://github.com/Stremio/stremio-addons/blob/master/docs/tutorial/using-cinemeta.md
-- **Jikan API:** API pública de dados de anime: https://jikan.moe/
+- **Cinemeta:** catálogo de metadados de filmes e séries. A integração usa paginação e filtro de gênero do protocolo de catálogos do Cinemeta.
+- **Kitsu:** API pública de metadados de anime: https://kitsu.docs.apiary.io/
 - **TVmaze:** API pública de séries e episódios: https://www.tvmaze.com/api. Os dados públicos são licenciados sob CC BY-SA e exigem atribuição e cumprimento da cláusula ShareAlike. Consulte os termos atuais do serviço.
 
 As capas e sinopses permanecem pertencentes aos respectivos titulares/fontes. A presença de metadados não concede licença de exibição ou distribuição audiovisual.
@@ -38,8 +40,9 @@ O projeto Turnstile Lab contém apenas cenários de teste oficiais e diagnóstic
 - `master`: código principal do repositório.
 - `builds`: artefatos publicados pelo fluxo de produção.
 - `lab/turnstile-workers`: experimentação e validação isolada.
+- `lab-builds`: repositório de plugins isolado, publicado pelo fluxo de laboratório.
 
-As alterações desta entrega ficam exclusivamente na branch de laboratório. O fluxo de produção não foi executado e a branch `builds` não foi modificada.
+As alterações desta entrega ficam exclusivamente nas branches de laboratório. O fluxo de produção não foi executado e a branch `builds` não foi modificada.
 
 ## Compilação local
 

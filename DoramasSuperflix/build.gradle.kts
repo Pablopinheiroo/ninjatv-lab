@@ -1,7 +1,7 @@
-version = 1
+version = 2
 
 cloudstream {
-    description = "Catálogo de doramas com capas, sinopses, gêneros e pesquisa. Metadados via TVmaze (CC BY-SA); sem reprodução."
+    description = "Catálogo de doramas via índice TVmaze, com gêneros, filtros por país e paginação; sem reprodução."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("TvSeries")

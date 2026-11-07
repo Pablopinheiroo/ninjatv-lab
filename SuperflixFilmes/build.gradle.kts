@@ -1,7 +1,7 @@
-version = 33
+version = 34
 
 cloudstream {
-    description = "Catálogo de filmes com capas, sinopses, gêneros e pesquisa. Metadados via Cinemeta; sem reprodução."
+    description = "Catálogo de filmes com gêneros organizados, capas, sinopses e paginação Cinemeta (100 por página); sem reprodução."
     authors = listOf("Pablopinheiroo")
     status = 1
     tvTypes = listOf("Movie")

@@ -7,11 +7,12 @@ import org.json.JSONObject
 import java.net.URLEncoder
 
 /**
- * Catálogo de animes com dados públicos do Jikan API.
+ * Catálogo de metadados de anime via Kitsu API.
+ * Kitsu substitui o endpoint Jikan que falhou na conexão IPv6 do aparelho.
  * Somente metadados; não oferece fontes de vídeo.
  */
 class AnimesSuperflixProvider : MainAPI() {
-    override var mainUrl = "https://api.jikan.moe"
+    override var mainUrl = BASE_URL
     override var name = "Animes Superflix"
     override var lang = "pt-BR"
     override val hasMainPage = true
@@ -19,10 +20,36 @@ class AnimesSuperflixProvider : MainAPI() {
     override val usesWebView = false
     override val supportedTypes = setOf(TvType.Anime)
 
+    companion object {
+        private const val BASE_URL = "https://kitsu.io/api/edge"
+        private const val PAGE_SIZE = 20
+    }
+
+    private val categoryPages = listOf(
+        "category|action" to "Ação",
+        "category|adventure" to "Aventura",
+        "category|comedy" to "Comédia",
+        "category|drama" to "Drama",
+        "category|fantasy" to "Fantasia",
+        "category|horror" to "Terror",
+        "category|mystery" to "Mistério",
+        "category|romance" to "Romance",
+        "category|science-fiction" to "Ficção científica",
+        "category|slice-of-life" to "Cotidiano",
+        "category|sports" to "Esportes",
+        "category|supernatural" to "Sobrenatural",
+        "category|thriller" to "Suspense",
+        "category|music" to "Música"
+    )
+
     override val mainPage = mainPageOf(
-        "top" to "Mais populares",
-        "airing" to "Em exibição",
-        "upcoming" to "Em breve"
+        *(
+            listOf(
+                "popular" to "Mais populares",
+                "current" to "Em exibição",
+                "upcoming" to "Em breve"
+            ) + categoryPages
+        ).toTypedArray()
     )
 
     private fun clean(value: String?): String? =
@@ -31,38 +58,36 @@ class AnimesSuperflixProvider : MainAPI() {
             ?.trim()
             ?.takeIf { it.isNotBlank() && it != "null" }
 
-    private fun animeTitle(item: JSONObject): String? =
-        clean(item.optString("title_english"))
-            ?: clean(item.optString("title"))
-            ?: clean(item.optString("title_japanese"))
+    private fun encode(value: String): String =
+        URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
-    private fun poster(item: JSONObject): String? =
-        item.optJSONObject("images")
-            ?.optJSONObject("jpg")
-            ?.let { clean(it.optString("large_image_url")) ?: clean(it.optString("image_url")) }
-
-    private fun year(item: JSONObject): Int? {
-        val direct = item.optInt("year", 0).takeIf { it > 0 }
-        if (direct != null) return direct
-        val aired = item.optJSONObject("aired")?.optString("from")
-        return aired?.take(4)?.toIntOrNull()
+    private fun animeTitle(attributes: JSONObject): String? {
+        val titles = attributes.optJSONObject("titles")
+        return clean(attributes.optString("canonicalTitle"))
+            ?: clean(titles?.optString("en"))
+            ?: clean(titles?.optString("en_jp"))
+            ?: clean(titles?.optString("ja_jp"))
     }
 
-    private fun genres(item: JSONObject): List<String> {
-        val array = item.optJSONArray("genres") ?: JSONArray()
-        return (0 until array.length()).mapNotNull { index ->
-            clean(array.optJSONObject(index)?.optString("name"))
-        }.distinct()
-    }
+    private fun poster(attributes: JSONObject): String? =
+        attributes.optJSONObject("posterImage")?.let {
+            clean(it.optString("large"))
+                ?: clean(it.optString("medium"))
+                ?: clean(it.optString("original"))
+                ?: clean(it.optString("small"))
+        }
+
+    private fun year(attributes: JSONObject): Int? =
+        attributes.optString("startDate").take(4).toIntOrNull()
 
     private fun toSearchResponse(item: JSONObject): SearchResponse? {
-        val id = item.optInt("mal_id", 0)
-        if (id <= 0) return null
-        val title = animeTitle(item) ?: return null
-        val detailUrl = "https://api.jikan.moe/v4/anime/" + id + "/full"
+        val id = clean(item.optString("id")) ?: return null
+        val attributes = item.optJSONObject("attributes") ?: return null
+        val title = animeTitle(attributes) ?: return null
+        val detailUrl = BASE_URL + "/anime/" + id + "?include=genres"
         return newAnimeSearchResponse(title, detailUrl, TvType.Anime) {
-            this.posterUrl = poster(item)
-            this.year = year(item)
+            this.posterUrl = poster(attributes)
+            this.year = year(attributes)
         }
     }
 
@@ -74,36 +99,50 @@ class AnimesSuperflixProvider : MainAPI() {
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val pageNumber = page.coerceAtLeast(1)
-        val filter = when (request.data) {
-            "airing" -> "airing"
-            "upcoming" -> "upcoming"
-            else -> "bypopularity"
+        val offset = (page - 1).coerceAtLeast(0) * PAGE_SIZE
+        val params = mutableListOf(
+            "page[limit]=$PAGE_SIZE",
+            "page[offset]=$offset"
+        )
+        when {
+            request.data.startsWith("category|") ->
+                params.add("filter[categories]=" + encode(request.data.substringAfter("category|")))
+            request.data == "current" -> params.add("filter[status]=current")
+            request.data == "upcoming" -> params.add("filter[status]=upcoming")
         }
-        val endpoint = "https://api.jikan.moe/v4/top/anime?filter=" + filter + "&limit=25&page=" + pageNumber
-        val items = parseItems(JSONObject(app.get(endpoint).text))
-        return newHomePageResponse(request.name, items, items.size >= 25)
+        params.add("sort=-userCount")
+        val endpoint = BASE_URL + "/anime?" + params.joinToString("&")
+        val json = JSONObject(app.get(endpoint).text)
+        val next = clean(json.optJSONObject("links")?.optString("next"))
+        val items = parseItems(json)
+        return newHomePageResponse(request.name, items, next != null)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
         val term = query.trim()
         if (term.isEmpty()) return emptyList()
-        val endpoint = "https://api.jikan.moe/v4/anime?q=" +
-            URLEncoder.encode(term, "UTF-8") + "&sfw=true&limit=25&page=1"
+        val endpoint = BASE_URL + "/anime?filter[text]=" + encode(term) +
+            "&page[limit]=$PAGE_SIZE&sort=-userCount"
         return parseItems(JSONObject(app.get(endpoint).text))
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val json = JSONObject(app.get(url).text)
-        val item = json.optJSONObject("data")
+        val response = JSONObject(app.get(url).text)
+        val item = response.optJSONObject("data")
             ?: throw ErrorLoadingException("Metadados do anime não encontrados.")
-        val title = animeTitle(item) ?: "Sem título"
-        val synopsis = clean(item.optString("synopsis"))
-        val tags = genres(item)
+        val attributes = item.optJSONObject("attributes") ?: JSONObject()
+        val title = animeTitle(attributes) ?: "Sem título"
+        val included = response.optJSONArray("included") ?: JSONArray()
+        val tags = (0 until included.length()).mapNotNull { index ->
+            val related = included.optJSONObject(index) ?: return@mapNotNull null
+            if (related.optString("type") != "genres") return@mapNotNull null
+            clean(related.optJSONObject("attributes")?.optString("name"))
+        }.distinct()
+
         return newAnimeLoadResponse(title, url, TvType.Anime) {
-            this.posterUrl = poster(item)
-            this.plot = synopsis
-            this.year = year(item)
+            this.posterUrl = poster(attributes)
+            this.plot = clean(attributes.optString("synopsis"))
+            this.year = year(attributes)
             this.tags = tags
         }
     }
